@@ -8,6 +8,29 @@ import { generateHairstyleGrid } from './services/geminiService';
 import { addHistoryItem, saveStyle } from './services/storageService';
 import { AppState } from './types';
 
+const QUOTES = [
+  "당신의 가치는 타인이 아닌 당신의 확신이 결정합니다.",
+  "어제보다 나은 오늘의 당신이 가장 아름답습니다.",
+  "시련은 성장을 위한 가장 정교한 디렉팅입니다.",
+  "모든 변화는 작은 용기에서 시작됩니다.",
+  "당신은 이미 충분히 빛날 자격을 갖추고 있습니다.",
+  "포기하지 않는 한, 실패는 성공의 과정일 뿐입니다.",
+  "당신만의 고유한 매력이 가장 강력한 브랜드입니다.",
+  "긍정적인 생각은 보이지 않는 길을 만들어냅니다.",
+  "내일의 기적은 오늘 흘린 땀방울에서 피어납니다.",
+  "스스로를 믿는 순간, 세상의 문이 열리기 시작합니다.",
+  "가장 위대한 걸작은 바로 당신의 삶입니다.",
+  "어려움은 더 큰 도약을 위한 발판에 불과합니다.",
+  "당신이 걷는 모든 발걸음이 역사가 됩니다.",
+  "오늘도 당신만의 색깔로 세상을 물들여 보세요.",
+  "진정한 아름다움은 자신을 사랑하는 마음에서 나옵니다.",
+  "꿈을 꾸는 것을 멈추지 마세요, 그것이 당신의 동력입니다.",
+  "당신의 열정은 반드시 누군가에게 영감이 됩니다.",
+  "작은 성취들이 모여 거대한 성공을 완성합니다.",
+  "지금 이 순간, 당신은 가장 멋진 가능성을 품고 있습니다.",
+  "당신의 빛나는 미래는 바로 지금 여기서 시작됩니다."
+];
+
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>(AppState.IDLE);
   const [originalImage, setOriginalImage] = useState<string | null>(null);
@@ -19,9 +42,16 @@ const App: React.FC = () => {
   const [showCamera, setShowCamera] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
+  const [randomQuote, setRandomQuote] = useState("");
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+
+  // 컴포넌트 마운트 시 랜덤 명언 설정
+  useEffect(() => {
+    const randomIndex = Math.floor(Math.random() * QUOTES.length);
+    setRandomQuote(QUOTES[randomIndex]);
+  }, []);
 
   const handleOpenKeyDialog = async () => {
     try {
@@ -472,10 +502,11 @@ const App: React.FC = () => {
               <span>클릭하거나 사진을 여기로 드래그하세요</span>
             </div>
 
-            {/* 100% 개인정보 보호 */}
-            <div className="fade-in-up-delay-2 flex items-center gap-2 text-gray-400 text-sm mb-8">
-              <i className="fas fa-shield-alt text-green-400"></i>
-              <span>100% 개인정보 보호. 광고 없음</span>
+            {/* 랜덤 명언 (이전: 100% 개인정보 보호) */}
+            <div className="fade-in-up-delay-2 flex items-center justify-center gap-2 text-gray-400 text-sm mb-8 px-4 opacity-80 min-h-[24px]">
+              <i className="fas fa-sparkles text-yellow-400 text-xs"></i>
+              <span className="text-center italic word-keep-all">{randomQuote}</span>
+              <i className="fas fa-sparkles text-yellow-400 text-xs"></i>
             </div>
 
             {/* 에러 메시지 */}
