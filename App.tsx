@@ -18,6 +18,7 @@ const App: React.FC = () => {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [cameraReady, setCameraReady] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -56,6 +57,7 @@ const App: React.FC = () => {
   const startCamera = useCallback(async () => {
     setShowUploadModal(false);
     setCameraError(null);
+    setCameraReady(false);
     setShowCamera(true);
   }, []);
 
@@ -64,28 +66,69 @@ const App: React.FC = () => {
     if (!showCamera) return;
 
     let mounted = true;
+    let retryCount = 0;
+    const maxRetries = 3;
 
     const initCamera = async () => {
+      // videoRef가 준비될 때까지 대기
+      if (!videoRef.current) {
+        if (retryCount < maxRetries) {
+          retryCount++;
+          console.log(`⏳ 비디오 요소 대기 중... (${retryCount}/${maxRetries})`);
+          setTimeout(initCamera, 100);
+          return;
+        }
+        console.error('❌ 비디오 요소를 찾을 수 없습니다');
+        setCameraError('카메라 초기화 실패. 다시 시도해주세요.');
+        return;
+      }
+
       try {
+        console.log('📷 카메라 스트림 요청 중...');
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+          video: {
+            facingMode: 'user',
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
           audio: false
         });
 
         if (!mounted) {
+          console.log('🛑 컴포넌트 언마운트됨 - 스트림 중지');
           stream.getTracks().forEach(track => track.stop());
           return;
         }
 
+        console.log('✅ 카메라 스트림 획득 성공');
         streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play().catch(console.error);
-        }
-      } catch (err) {
-        console.error('카메라 접근 실패:', err);
+
+        const video = videoRef.current;
+        video.srcObject = stream;
+
+        // 비디오 메타데이터 로드 후 재생
+        video.onloadedmetadata = () => {
+          console.log('📹 비디오 메타데이터 로드됨');
+          video.play()
+            .then(() => {
+              console.log('▶️ 비디오 재생 시작');
+              if (mounted) setCameraReady(true);
+            })
+            .catch(err => console.error('❌ 비디오 재생 실패:', err));
+        };
+
+      } catch (err: any) {
+        console.error('❌ 카메라 접근 실패:', err);
         if (mounted) {
-          setCameraError('카메라에 접근할 수 없습니다. 카메라 권한을 허용해주세요.');
+          if (err.name === 'NotAllowedError') {
+            setCameraError('카메라 권한이 거부되었습니다. 브라우저 설정에서 카메라 권한을 허용해주세요.');
+          } else if (err.name === 'NotFoundError') {
+            setCameraError('카메라를 찾을 수 없습니다. 카메라가 연결되어 있는지 확인해주세요.');
+          } else if (err.name === 'NotReadableError') {
+            setCameraError('카메라가 다른 앱에서 사용 중입니다. 다른 앱을 종료하고 다시 시도해주세요.');
+          } else {
+            setCameraError(`카메라 접근 실패: ${err.message || '알 수 없는 오류'}`);
+          }
         }
       }
     };
@@ -95,6 +138,7 @@ const App: React.FC = () => {
     return () => {
       mounted = false;
       if (streamRef.current) {
+        console.log('🛑 카메라 스트림 정리');
         streamRef.current.getTracks().forEach(track => track.stop());
         streamRef.current = null;
       }
@@ -614,7 +658,7 @@ const App: React.FC = () => {
           </header>
 
           {/* 카메라 뷰 */}
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex-1 flex items-center justify-center relative">
             {cameraError ? (
               <div className="text-center px-8">
                 <div className="w-20 h-20 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
@@ -630,25 +674,35 @@ const App: React.FC = () => {
                 </button>
               </div>
             ) : (
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full h-full object-cover"
-                style={{ transform: 'scaleX(-1)' }}
-              />
+              <>
+                {/* 로딩 표시 */}
+                {!cameraReady && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black z-10">
+                    <div className="w-16 h-16 border-4 border-violet-500/30 border-t-violet-500 rounded-full animate-spin mb-4"></div>
+                    <p className="text-violet-400 font-medium">카메라 준비 중...</p>
+                    <p className="text-gray-500 text-sm mt-2">카메라 권한을 허용해주세요</p>
+                  </div>
+                )}
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className={`w-full h-full object-cover transition-opacity duration-300 ${cameraReady ? 'opacity-100' : 'opacity-0'}`}
+                  style={{ transform: 'scaleX(-1)' }}
+                />
+              </>
             )}
           </div>
 
           {/* 촬영 컨트롤 */}
-          {!cameraError && (
+          {!cameraError && cameraReady && (
             <div className="absolute bottom-0 left-0 right-0 pb-10 pt-6 bg-gradient-to-t from-black/80 to-transparent">
               <div className="flex items-center justify-center gap-8">
                 {/* 촬영 버튼 */}
                 <button
                   onClick={capturePhoto}
-                  className="w-20 h-20 rounded-full bg-white flex items-center justify-center shadow-lg hover:scale-105 transition-transform"
+                  className="w-20 h-20 rounded-full bg-white flex items-center justify-center shadow-lg hover:scale-105 transition-transform active:scale-95"
                 >
                   <div className="w-16 h-16 rounded-full border-4 border-gray-300"></div>
                 </button>
