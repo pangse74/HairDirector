@@ -10,6 +10,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onSelectItem }) => {
     const [history, setHistory] = useState<HistoryItem[]>([]);
     const [selectedItem, setSelectedItem] = useState<HistoryItem | null>(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [isDownloading, setIsDownloading] = useState(false);
 
     useEffect(() => {
         loadHistory();
@@ -36,6 +37,102 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onSelectItem }) => {
         clearHistory();
         loadHistory();
         setShowDeleteConfirm(false);
+    };
+
+    // Base64를 Blob으로 변환하는 유틸리티 함수
+    const base64ToBlob = (base64: string): Blob => {
+        try {
+            const parts = base64.split(';base64,');
+            const contentType = parts[0].split(':')[1] || 'image/png';
+            const raw = window.atob(parts[1]);
+            const rawLength = raw.length;
+            const uInt8Array = new Uint8Array(rawLength);
+
+            for (let i = 0; i < rawLength; ++i) {
+                uInt8Array[i] = raw.charCodeAt(i);
+            }
+
+            return new Blob([uInt8Array], { type: contentType });
+        } catch (e) {
+            console.error('Base64 변환 오류:', e);
+            throw e;
+        }
+    };
+
+    // 이미지 다운로드 함수
+    const handleDownloadImage = async (item: HistoryItem) => {
+        try {
+            setIsDownloading(true);
+
+            const imageUrl = item.resultImage;
+
+            // 이미지가 없는 경우
+            if (!imageUrl) {
+                alert('저장할 이미지가 없습니다.');
+                setIsDownloading(false);
+                return;
+            }
+
+            const fileName = `헤어핏_스타일_${new Date().toISOString().split('T')[0]}_${Date.now()}`;
+
+            // Base64 이미지인 경우 Blob으로 변환하여 다운로드
+            if (imageUrl.startsWith('data:')) {
+                try {
+                    const blob = base64ToBlob(imageUrl);
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `${fileName}.png`;
+                    link.style.display = 'none';
+                    document.body.appendChild(link);
+                    link.click();
+
+                    // cleanup
+                    setTimeout(() => {
+                        document.body.removeChild(link);
+                        window.URL.revokeObjectURL(url);
+                    }, 200);
+
+                    alert('이미지가 저장되었습니다! 📥');
+                } catch (e) {
+                    console.error('Blob 변환 실패, 직접 다운로드 시도:', e);
+                    // 폴백: 직접 a 태그로 다운로드
+                    const link = document.createElement('a');
+                    link.href = imageUrl;
+                    link.download = `${fileName}.png`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    alert('이미지가 저장되었습니다! 📥');
+                }
+                setIsDownloading(false);
+                return;
+            }
+
+            // URL 이미지인 경우
+            try {
+                const response = await fetch(imageUrl);
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `${fileName}.jpg`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+                alert('이미지가 저장되었습니다! 📥');
+            } catch {
+                window.open(imageUrl, '_blank');
+                alert('새 탭에서 이미지가 열렸습니다. 마우스 오른쪽 버튼 → 다른 이름으로 이미지 저장을 선택하세요.');
+            }
+
+            setIsDownloading(false);
+        } catch (error) {
+            console.error('다운로드 실패:', error);
+            alert('이미지 다운로드에 실패했습니다. 다시 시도해주세요.');
+            setIsDownloading(false);
+        }
     };
 
     // 상세 보기 모달
@@ -149,10 +246,14 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onSelectItem }) => {
 
                 {/* 액션 버튼들 */}
                 <div className="grid grid-cols-2 gap-3">
-                    <button className="p-4 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all flex items-center justify-center gap-2">
+                    <a
+                        href={selectedItem.resultImage}
+                        download={`헤어핏_스타일_${new Date().toISOString().split('T')[0]}.png`}
+                        className="p-4 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2"
+                    >
                         <i className="fas fa-download"></i>
                         <span>다운로드</span>
-                    </button>
+                    </a>
                     <button className="p-4 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2">
                         <i className="fas fa-crown"></i>
                         <span>PRO 업그레이드</span>

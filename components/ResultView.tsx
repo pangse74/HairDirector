@@ -1,5 +1,6 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { saveStyle, getSavedStyles } from '../services/storageService';
 
 interface Props {
   originalImage: string;
@@ -11,6 +12,142 @@ const STYLES = ["포마드컷", "리프컷", "댄디컷", "리젠트컷", "쉐�
 
 export const ResultView: React.FC<Props> = ({ originalImage, resultImage, onReset }) => {
   const [selectedStyle, setSelectedStyle] = useState<number | null>(null);
+  const [savedStyles, setSavedStyles] = useState<Set<number>>(new Set());
+  const [showSaveToast, setShowSaveToast] = useState(false);
+  const [autoSaved, setAutoSaved] = useState(false);
+  const hasAutoDownloaded = useRef(false);
+
+  // Base64를 Blob으로 변환하는 유틸리티 함수
+  const base64ToBlob = (base64: string): Blob => {
+    const parts = base64.split(';base64,');
+    const contentType = parts[0].split(':')[1] || 'image/png';
+    const raw = window.atob(parts[1]);
+    const rawLength = raw.length;
+    const uInt8Array = new Uint8Array(rawLength);
+
+    for (let i = 0; i < rawLength; ++i) {
+      uInt8Array[i] = raw.charCodeAt(i);
+    }
+
+    return new Blob([uInt8Array], { type: contentType });
+  };
+
+  // 자동 다운로드 함수
+  const autoDownloadResult = () => {
+    if (hasAutoDownloaded.current || !resultImage) return;
+    hasAutoDownloaded.current = true;
+
+    try {
+      const fileName = `헤어핏_AI분석결과_${new Date().toISOString().split('T')[0]}_${Date.now()}.png`;
+
+      // a 태그를 사용한 다운로드 (저장하기 버튼과 동일한 방식)
+      const link = document.createElement('a');
+      link.href = resultImage;
+      link.download = fileName;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+
+      setTimeout(() => {
+        document.body.removeChild(link);
+      }, 200);
+
+      setAutoSaved(true);
+      // 5초 후 토스트 숨기기
+      setTimeout(() => setAutoSaved(false), 5000);
+      console.log('✅ 결과 이미지 자동 저장 완료');
+    } catch (error) {
+      console.error('자동 저장 실패:', error);
+    }
+  };
+
+  // 결과 이미지가 로드되면 자동으로 다운로드
+  useEffect(() => {
+    if (resultImage && !hasAutoDownloaded.current) {
+      // 약간의 딜레이 후 다운로드 (UI가 먼저 표시되도록)
+      const timer = setTimeout(() => {
+        autoDownloadResult();
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resultImage]);
+
+  // 저장된 스타일 체크
+  useEffect(() => {
+    const saved = getSavedStyles();
+    const savedIndexes = new Set<number>();
+    saved.forEach(s => {
+      if (s.title && STYLES.includes(s.title)) {
+        savedIndexes.add(STYLES.indexOf(s.title));
+      }
+    });
+    setSavedStyles(savedIndexes);
+  }, []);
+
+  // 3x3 그리드에서 특정 셀을 크롭하는 함수
+  const cropCellFromGrid = (imageBase64: string, cellIndex: number): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d')!;
+
+        // 3x3 그리드에서 셀 위치 계산
+        const row = Math.floor(cellIndex / 3);
+        const col = cellIndex % 3;
+        const cellWidth = img.width / 3;
+        const cellHeight = img.height / 3;
+
+        // 셀 크기로 캔버스 설정
+        canvas.width = cellWidth;
+        canvas.height = cellHeight;
+
+        // 해당 셀만 그리기
+        ctx.drawImage(
+          img,
+          col * cellWidth,    // 소스 x
+          row * cellHeight,   // 소스 y
+          cellWidth,          // 소스 너비
+          cellHeight,         // 소스 높이
+          0,                  // 대상 x
+          0,                  // 대상 y
+          cellWidth,          // 대상 너비
+          cellHeight          // 대상 높이
+        );
+
+        // JPEG 80% 품질로 저장
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
+      };
+      img.onerror = () => {
+        resolve(imageBase64); // 오류 시 원본 반환
+      };
+      img.src = imageBase64;
+    });
+  };
+
+  // 스타일 저장 핸들러
+  const handleSaveStyle = async (index: number) => {
+    const styleName = STYLES[index];
+
+    // 선택된 셀만 크롭
+    const croppedImage = await cropCellFromGrid(resultImage, index);
+
+    saveStyle({
+      type: 'simulation',
+      category: 'cut',
+      title: styleName,
+      thumbnail: croppedImage, // 크롭된 이미지를 썸네일로 사용
+      notes: `AI 추천 스타일 #${index + 1}`,
+    });
+
+    // 저장 상태 업데이트
+    setSavedStyles(prev => new Set([...prev, index]));
+
+    // 토스트 표시
+    setShowSaveToast(true);
+    setTimeout(() => setShowSaveToast(false), 2000);
+  };
+
 
   // 3x3 그리드에서 특정 셀의 위치 계산 (0-8)
   const getCellPosition = (index: number) => {
@@ -60,8 +197,8 @@ export const ResultView: React.FC<Props> = ({ originalImage, resultImage, onRese
                 key={i}
                 onClick={() => setSelectedStyle(i)}
                 className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${selectedStyle === i
-                    ? 'bg-violet-600/30 border-violet-500 scale-105'
-                    : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-violet-500/50'
+                  ? 'bg-violet-600/30 border-violet-500 scale-105'
+                  : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-violet-500/50'
                   }`}
               >
                 <span className={`block font-bold text-sm mb-1 ${selectedStyle === i ? 'text-violet-300' : 'text-violet-400'}`}>
@@ -170,19 +307,32 @@ export const ResultView: React.FC<Props> = ({ originalImage, resultImage, onRese
             </div>
 
             {/* 하단 액션 */}
-            <div className="flex items-center justify-center gap-4 mt-6">
+            <div className="flex items-center justify-center gap-3 mt-6">
               <button
                 onClick={() => setSelectedStyle(selectedStyle > 0 ? selectedStyle - 1 : 8)}
                 className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all"
               >
                 <i className="fas fa-chevron-left text-white"></i>
               </button>
+
+              {/* 저장 버튼 */}
+              <button
+                onClick={() => handleSaveStyle(selectedStyle)}
+                className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${savedStyles.has(selectedStyle)
+                  ? 'bg-pink-500 text-white'
+                  : 'bg-white/10 text-white/70 hover:bg-pink-500/30 hover:text-pink-400'
+                  }`}
+              >
+                <i className={`fas fa-heart ${savedStyles.has(selectedStyle) ? 'animate-pulse' : ''}`}></i>
+              </button>
+
               <button
                 onClick={() => setSelectedStyle(null)}
-                className="px-8 py-3 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-bold hover:opacity-90 transition-all"
+                className="px-6 py-3 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-bold hover:opacity-90 transition-all"
               >
                 확인
               </button>
+
               <button
                 onClick={() => setSelectedStyle(selectedStyle < 8 ? selectedStyle + 1 : 0)}
                 className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all"
@@ -190,6 +340,26 @@ export const ResultView: React.FC<Props> = ({ originalImage, resultImage, onRese
                 <i className="fas fa-chevron-right text-white"></i>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 저장 완료 토스트 */}
+      {showSaveToast && (
+        <div className="fixed bottom-24 left-1/2 transform -translate-x-1/2 z-[60] animate-in slide-in-from-bottom-4 fade-in duration-300">
+          <div className="px-6 py-3 rounded-full bg-pink-500 text-white font-bold shadow-lg shadow-pink-500/30 flex items-center gap-2">
+            <i className="fas fa-heart"></i>
+            <span>저장됨! 💕</span>
+          </div>
+        </div>
+      )}
+
+      {/* 자동 저장 완료 토스트 */}
+      {autoSaved && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[60] animate-in slide-in-from-top-4 fade-in duration-300">
+          <div className="px-6 py-3 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold shadow-lg shadow-green-500/30 flex items-center gap-2">
+            <i className="fas fa-check-circle"></i>
+            <span>결과 이미지가 기기에 자동 저장되었습니다! 📥</span>
           </div>
         </div>
       )}

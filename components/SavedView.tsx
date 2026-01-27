@@ -14,6 +14,7 @@ export const SavedView: React.FC<SavedViewProps> = ({ onCompare }) => {
     const [compareItems, setCompareItems] = useState<string[]>([]);
     const [editNotes, setEditNotes] = useState<string>('');
     const [showNoteEditor, setShowNoteEditor] = useState(false);
+    const [isDownloading, setIsDownloading] = useState(false);
 
     const categories: StyleCategory[] = ['all', 'cut', 'perm', 'color'];
 
@@ -55,6 +56,102 @@ export const SavedView: React.FC<SavedViewProps> = ({ onCompare }) => {
             setCompareItems(compareItems.filter(i => i !== id));
         } else if (compareItems.length < 4) {
             setCompareItems([...compareItems, id]);
+        }
+    };
+
+    // Base64를 Blob으로 변환하는 유틸리티 함수
+    const base64ToBlob = (base64: string): Blob => {
+        try {
+            const parts = base64.split(';base64,');
+            const contentType = parts[0].split(':')[1] || 'image/png';
+            const raw = window.atob(parts[1]);
+            const rawLength = raw.length;
+            const uInt8Array = new Uint8Array(rawLength);
+
+            for (let i = 0; i < rawLength; ++i) {
+                uInt8Array[i] = raw.charCodeAt(i);
+            }
+
+            return new Blob([uInt8Array], { type: contentType });
+        } catch (e) {
+            console.error('Base64 변환 오류:', e);
+            throw e;
+        }
+    };
+
+    // 이미지 다운로드 함수
+    const handleDownloadImage = async (item: SavedStyle) => {
+        try {
+            setIsDownloading(true);
+
+            const imageUrl = item.thumbnail;
+
+            // 이미지가 없는 경우
+            if (!imageUrl) {
+                alert('저장할 이미지가 없습니다.');
+                setIsDownloading(false);
+                return;
+            }
+
+            const fileName = `${item.title.replace(/[^a-zA-Z0-9가-힣]/g, '_')}_${Date.now()}`;
+
+            // Base64 이미지인 경우 Blob으로 변환하여 다운로드
+            if (imageUrl.startsWith('data:')) {
+                try {
+                    const blob = base64ToBlob(imageUrl);
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `${fileName}.png`;
+                    link.style.display = 'none';
+                    document.body.appendChild(link);
+                    link.click();
+
+                    // cleanup
+                    setTimeout(() => {
+                        document.body.removeChild(link);
+                        window.URL.revokeObjectURL(url);
+                    }, 200);
+
+                    alert('이미지가 저장되었습니다! 📥');
+                } catch (e) {
+                    console.error('Blob 변환 실패, 직접 다운로드 시도:', e);
+                    // 폴백: 직접 a 태그로 다운로드
+                    const link = document.createElement('a');
+                    link.href = imageUrl;
+                    link.download = `${fileName}.png`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    alert('이미지가 저장되었습니다! 📥');
+                }
+                setIsDownloading(false);
+                return;
+            }
+
+            // URL 이미지인 경우
+            try {
+                const response = await fetch(imageUrl);
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `${fileName}.jpg`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+                alert('이미지가 저장되었습니다! 📥');
+            } catch {
+                window.open(imageUrl, '_blank');
+                alert('새 탭에서 이미지가 열렸습니다. 마우스 오른쪽 버튼 → 다른 이름으로 이미지 저장을 선택하세요.');
+            }
+
+            setIsDownloading(false);
+        } catch (error) {
+            console.error('다운로드 실패:', error);
+            alert('이미지 다운로드에 실패했습니다. 다시 시도해주세요.');
+            setIsDownloading(false);
         }
     };
 
@@ -175,8 +272,8 @@ export const SavedView: React.FC<SavedViewProps> = ({ onCompare }) => {
                                     key={cat}
                                     onClick={() => handleCategoryChange(selectedItem.id, cat)}
                                     className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${selectedItem.category === cat
-                                            ? 'bg-violet-600 text-white'
-                                            : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                                        ? 'bg-violet-600 text-white'
+                                        : 'bg-white/5 text-gray-400 hover:bg-white/10'
                                         }`}
                                 >
                                     {categoryLabels[cat]}
@@ -245,10 +342,17 @@ export const SavedView: React.FC<SavedViewProps> = ({ onCompare }) => {
                     </div>
                 )}
 
-                {/* 액션 버튼 */}
-                <button className="w-full py-4 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all">
-                    <i className="fas fa-download mr-2"></i>이미지 저장
-                </button>
+                {/* 액션 버튼 - 비디오가 아닌 경우만 표시 */}
+                {selectedItem.type !== 'video' && selectedItem.thumbnail && (
+                    <a
+                        href={selectedItem.thumbnail}
+                        download={`${selectedItem.title.replace(/[^a-zA-Z0-9가-힣]/g, '_')}_${Date.now()}.png`}
+                        className="w-full py-4 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2"
+                    >
+                        <i className="fas fa-download"></i>
+                        <span>이미지 저장</span>
+                    </a>
+                )}
             </div>
         );
     }
@@ -271,8 +375,8 @@ export const SavedView: React.FC<SavedViewProps> = ({ onCompare }) => {
                     <button
                         onClick={() => setCompareMode(!compareMode)}
                         className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${compareMode
-                                ? 'bg-violet-600 text-white'
-                                : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                            ? 'bg-violet-600 text-white'
+                            : 'bg-white/5 text-gray-400 hover:bg-white/10'
                             }`}
                     >
                         <i className="fas fa-columns mr-2"></i>비교
@@ -287,8 +391,8 @@ export const SavedView: React.FC<SavedViewProps> = ({ onCompare }) => {
                         key={cat}
                         onClick={() => setSelectedCategory(cat)}
                         className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${selectedCategory === cat
-                                ? 'bg-violet-600 text-white'
-                                : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                            ? 'bg-violet-600 text-white'
+                            : 'bg-white/5 text-gray-400 hover:bg-white/10'
                             }`}
                     >
                         {categoryLabels[cat]}
@@ -319,15 +423,15 @@ export const SavedView: React.FC<SavedViewProps> = ({ onCompare }) => {
                             key={item.id}
                             onClick={() => compareMode ? toggleCompareItem(item.id) : setSelectedItem(item)}
                             className={`glass-card-dark p-3 cursor-pointer transition-all group relative ${compareMode && compareItems.includes(item.id)
-                                    ? 'ring-2 ring-violet-500'
-                                    : 'hover:bg-white/10'
+                                ? 'ring-2 ring-violet-500'
+                                : 'hover:bg-white/10'
                                 }`}
                         >
                             {/* 비교 체크 */}
                             {compareMode && (
                                 <div className={`absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center z-10 ${compareItems.includes(item.id)
-                                        ? 'bg-violet-500 text-white'
-                                        : 'bg-black/50 text-gray-400 border border-white/20'
+                                    ? 'bg-violet-500 text-white'
+                                    : 'bg-black/50 text-gray-400 border border-white/20'
                                     }`}>
                                     {compareItems.includes(item.id) && <i className="fas fa-check text-xs"></i>}
                                 </div>
