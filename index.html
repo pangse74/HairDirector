@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>헤어핏 - AI 헤어스타일 추천</title>
-  <meta name="description" content="3초 만에 인생 헤어 찾기! AI 얼굴형 분석 및 가상 헤어 체험">
+  <meta name="description" content="30초 만에 인생 헤어스타일 찾기! AI 얼굴형 분석 및 가상 헤어 체험">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap"
@@ -170,6 +170,23 @@
 
     .animate-fadeIn {
       animation: fadeIn 0.3s ease-out forwards;
+    }
+
+    /* 슬라이드업 애니메이션 (모달용) */
+    @keyframes slideUp {
+      from {
+        transform: translateY(100%);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .animate-slideUp {
+      animation: slideUp 0.3s ease-out forwards;
     }
   </style>
 </head>

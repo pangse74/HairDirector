@@ -5,6 +5,76 @@ const STYLES = ["포마드컷", "리프컷", "댄디컷", "리젠트컷", "쉐�
 // 개발 환경인지 확인
 const isDevelopment = typeof import.meta !== 'undefined' && (import.meta as any).env?.DEV;
 
+// API 키 존재 여부 확인
+const hasApiKey = (): boolean => {
+  const apiKey = (process as any).env?.API_KEY || (process as any).env?.GEMINI_API_KEY;
+  return !!(apiKey && apiKey.trim().length > 0);
+};
+
+// 디버그 모드: API 없이 3x3 그리드 생성 (원본 이미지 복제)
+const generateDebugGrid = async (base64Image: string): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      // 3x3 그리드 캔버스 생성
+      const cellSize = Math.min(img.width, img.height);
+      const gridSize = cellSize * 3;
+      const canvas = document.createElement('canvas');
+      canvas.width = gridSize;
+      canvas.height = gridSize;
+      const ctx = canvas.getContext('2d')!;
+
+      // 배경 설정
+      ctx.fillStyle = '#1a1a24';
+      ctx.fillRect(0, 0, gridSize, gridSize);
+
+      // 각 셀에 원본 이미지 복사 및 스타일 라벨 추가
+      for (let row = 0; row < 3; row++) {
+        for (let col = 0; col < 3; col++) {
+          const x = col * cellSize;
+          const y = row * cellSize;
+          const styleIndex = row * 3 + col;
+
+          // 원본 이미지를 정사각형으로 crop하여 그리기
+          const srcSize = Math.min(img.width, img.height);
+          const srcX = (img.width - srcSize) / 2;
+          const srcY = (img.height - srcSize) / 2;
+
+          ctx.drawImage(img, srcX, srcY, srcSize, srcSize, x, y, cellSize, cellSize);
+
+          // 스타일 이름 라벨 추가
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+          ctx.fillRect(x, y + cellSize - 40, cellSize, 40);
+
+          ctx.fillStyle = '#ffffff';
+          ctx.font = `bold ${Math.floor(cellSize / 10)}px "Noto Sans KR", sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(STYLES[styleIndex], x + cellSize / 2, y + cellSize - 20);
+
+          // 셀 경계선
+          ctx.strokeStyle = 'rgba(139, 92, 246, 0.3)';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(x, y, cellSize, cellSize);
+        }
+      }
+
+      // 디버그 모드 표시
+      ctx.fillStyle = 'rgba(255, 165, 0, 0.9)';
+      ctx.fillRect(10, 10, 200, 30);
+      ctx.fillStyle = '#000';
+      ctx.font = 'bold 14px "Noto Sans KR", sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🔧 디버그 모드 (API 미사용)', 20, 25);
+
+      resolve(canvas.toDataURL('image/jpeg', 0.9));
+    };
+    img.onerror = () => reject(new Error('이미지 로드 실패'));
+    img.src = base64Image;
+  });
+};
+
 // API 응답 타입 정의
 interface GenerateResponse {
   success?: boolean;
@@ -101,6 +171,12 @@ Apply these specific Korean hairstyles to each position (from left to right, top
 };
 
 export const generateHairstyleGrid = async (base64Image: string): Promise<string> => {
+  // API 키가 없으면 디버그 모드로 동작
+  if (!hasApiKey()) {
+    console.log('⚠️ 디버그 모드: API 키 없음 - 3x3 그리드 미리보기 생성');
+    return await generateDebugGrid(base64Image);
+  }
+
   // Clean base64 data (remove prefix if present)
   const base64Data = base64Image.split(',')[1] || base64Image;
   const mimeType = base64Image.split(';')[0].split(':')[1] || 'image/png';

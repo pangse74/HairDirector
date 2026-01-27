@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { LoadingOverlay } from './components/LoadingOverlay';
 import { ResultView } from './components/ResultView';
 import { HistoryView } from './components/HistoryView';
@@ -15,6 +15,12 @@ const App: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'home' | 'history' | 'saved'>('home');
   const [isDragging, setIsDragging] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const handleOpenKeyDialog = async () => {
     try {
@@ -41,8 +47,106 @@ const App: React.FC = () => {
     reader.readAsDataURL(file);
   }, []);
 
-  // 클릭으로 파일 선택
+  // 스캔 버튼 클릭 - 모달 열기
   const handleScanClick = useCallback(() => {
+    setShowUploadModal(true);
+  }, []);
+
+  // 카메라 시작
+  const startCamera = useCallback(async () => {
+    setShowUploadModal(false);
+    setCameraError(null);
+    setShowCamera(true);
+  }, []);
+
+  // 카메라가 활성화되면 스트림 연결
+  useEffect(() => {
+    if (!showCamera) return;
+
+    let mounted = true;
+
+    const initCamera = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false
+        });
+
+        if (!mounted) {
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
+
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(console.error);
+        }
+      } catch (err) {
+        console.error('카메라 접근 실패:', err);
+        if (mounted) {
+          setCameraError('카메라에 접근할 수 없습니다. 카메라 권한을 허용해주세요.');
+        }
+      }
+    };
+
+    initCamera();
+
+    return () => {
+      mounted = false;
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+    };
+  }, [showCamera]);
+
+  // 카메라 중지
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setShowCamera(false);
+    setCameraError(null);
+  }, []);
+
+  // 사진 촬영
+  const capturePhoto = useCallback(() => {
+    if (!videoRef.current) return;
+
+    const video = videoRef.current;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      // 좌우 반전 (거울 모드)
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(video, 0, 0);
+    }
+
+    const base64Image = canvas.toDataURL('image/jpeg', 0.9);
+    setOriginalImage(base64Image);
+    setErrorMessage(null);
+    stopCamera();
+    setState(AppState.PREVIEW);
+  }, [stopCamera]);
+
+  // 컴포넌트 언마운트 시 스트림 정리
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
+  // 갤러리에서 사진 선택
+  const handleGallerySelect = useCallback(() => {
+    setShowUploadModal(false);
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
@@ -81,9 +185,13 @@ const App: React.FC = () => {
   const handleStartAnalysis = useCallback(async () => {
     if (!originalImage) return;
 
-    // API 키 확인
-    const hasKey = await (window as any).aistudio?.hasSelectedApiKey();
-    if (!hasKey) {
+    // API 키 확인 (디버그 모드에서는 스킵)
+    const hasKey = await (window as any).aistudio?.hasSelectedApiKey?.();
+    const apiKeyEnv = (process as any).env?.API_KEY || (process as any).env?.GEMINI_API_KEY;
+    const hasApiKeyEnv = !!(apiKeyEnv && apiKeyEnv.trim().length > 0);
+
+    // API 키가 없어도 디버그 모드로 진행
+    if (!hasKey && hasApiKeyEnv) {
       await handleOpenKeyDialog();
     }
 
@@ -293,10 +401,10 @@ const App: React.FC = () => {
             {/* 메인 타이틀 */}
             <div className="text-center mb-8 fade-in-up-delay-1">
               <h1 className="text-4xl font-black text-white mb-2 leading-tight">
-                3초 만에
+                30초 만에
               </h1>
               <h1 className="text-4xl font-black text-white leading-tight">
-                인생 헤어 찾기
+                인생 헤어스타일 찾기
               </h1>
               <p className="text-gray-400 mt-4 text-sm">
                 AI 얼굴형 분석 및 가상 헤어 체험
@@ -435,6 +543,123 @@ const App: React.FC = () => {
 
       {/* 로딩 오버레이 */}
       {state === AppState.GENERATING && <LoadingOverlay />}
+
+      {/* 업로드 방식 선택 모달 */}
+      {showUploadModal && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-end justify-center animate-fadeIn"
+          onClick={() => setShowUploadModal(false)}
+        >
+          <div
+            className="w-full max-w-md bg-[#1a1a24] rounded-t-3xl p-6 pb-10 animate-slideUp"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-1 bg-gray-600 rounded-full mx-auto mb-6"></div>
+            <h3 className="text-white text-lg font-bold text-center mb-6">사진 업로드 방법 선택</h3>
+
+            <div className="space-y-3">
+              {/* 카메라 촬영 */}
+              <button
+                onClick={startCamera}
+                className="w-full py-4 px-5 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-semibold flex items-center gap-4 hover:opacity-90 transition-all"
+              >
+                <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                  <i className="fas fa-camera text-xl"></i>
+                </div>
+                <div className="text-left">
+                  <div className="font-bold">카메라로 촬영</div>
+                  <div className="text-sm text-white/70">지금 바로 셀카 촬영하기</div>
+                </div>
+              </button>
+
+              {/* 갤러리 선택 */}
+              <button
+                onClick={handleGallerySelect}
+                className="w-full py-4 px-5 rounded-2xl bg-white/10 border border-white/10 text-white font-semibold flex items-center gap-4 hover:bg-white/15 transition-all"
+              >
+                <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center">
+                  <i className="fas fa-images text-xl text-violet-400"></i>
+                </div>
+                <div className="text-left">
+                  <div className="font-bold">갤러리에서 선택</div>
+                  <div className="text-sm text-gray-400">저장된 사진 불러오기</div>
+                </div>
+              </button>
+            </div>
+
+            {/* 닫기 버튼 */}
+            <button
+              onClick={() => setShowUploadModal(false)}
+              className="w-full mt-4 py-3 text-gray-400 hover:text-white transition-colors"
+            >
+              취소
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 카메라 촬영 화면 */}
+      {showCamera && (
+        <div className="fixed inset-0 z-50 bg-black flex flex-col">
+          {/* 헤더 */}
+          <header className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-5 py-4 bg-gradient-to-b from-black/80 to-transparent">
+            <button
+              onClick={stopCamera}
+              className="flex items-center gap-2 text-white"
+            >
+              <i className="fas fa-times text-2xl"></i>
+            </button>
+            <span className="text-white font-bold">카메라</span>
+            <div className="w-8"></div>
+          </header>
+
+          {/* 카메라 뷰 */}
+          <div className="flex-1 flex items-center justify-center">
+            {cameraError ? (
+              <div className="text-center px-8">
+                <div className="w-20 h-20 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+                  <i className="fas fa-video-slash text-red-400 text-3xl"></i>
+                </div>
+                <p className="text-red-400 font-medium mb-2">카메라 접근 실패</p>
+                <p className="text-gray-400 text-sm mb-6">{cameraError}</p>
+                <button
+                  onClick={stopCamera}
+                  className="px-6 py-3 rounded-xl bg-white/10 text-white font-medium"
+                >
+                  닫기
+                </button>
+              </div>
+            ) : (
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-full object-cover"
+                style={{ transform: 'scaleX(-1)' }}
+              />
+            )}
+          </div>
+
+          {/* 촬영 컨트롤 */}
+          {!cameraError && (
+            <div className="absolute bottom-0 left-0 right-0 pb-10 pt-6 bg-gradient-to-t from-black/80 to-transparent">
+              <div className="flex items-center justify-center gap-8">
+                {/* 촬영 버튼 */}
+                <button
+                  onClick={capturePhoto}
+                  className="w-20 h-20 rounded-full bg-white flex items-center justify-center shadow-lg hover:scale-105 transition-transform"
+                >
+                  <div className="w-16 h-16 rounded-full border-4 border-gray-300"></div>
+                </button>
+              </div>
+              <p className="text-center text-gray-400 text-sm mt-4">
+                정면을 바라보고 촬영해주세요
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
