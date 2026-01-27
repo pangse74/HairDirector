@@ -1,0 +1,7 @@
+{
+  "name": "AI 헤어 스타일러 3x3",
+  "description": "한 번의 사진 업로드로 9가지의 다양한 한국 인기 헤어스타일을 3x3 그리드 형태의 1K 고해상도 이미지로 미리 확인해보세요.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
