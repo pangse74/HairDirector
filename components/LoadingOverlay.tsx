@@ -33,32 +33,43 @@ export const LoadingOverlay: React.FC = () => {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-900/80 backdrop-blur-md text-white p-6">
+    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#0a0a0f]/95 backdrop-blur-xl text-white p-6">
       <div className="max-w-md w-full text-center space-y-8">
+        {/* 스캔 애니메이션 */}
         <div className="relative">
-          <div className="w-32 h-32 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin mx-auto"></div>
+          <div className="w-36 h-36 rounded-full bg-gradient-to-br from-violet-600 to-purple-700 mx-auto flex items-center justify-center"
+            style={{
+              boxShadow: '0 0 60px rgba(139, 92, 246, 0.5), 0 0 100px rgba(139, 92, 246, 0.3)',
+              animation: 'pulse-glow 2s ease-in-out infinite'
+            }}>
+            <i className="fas fa-brain text-5xl text-white animate-pulse"></i>
+          </div>
+          {/* 회전 링 */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <i className="fas fa-scissors text-3xl text-indigo-400 animate-pulse"></i>
+            <div className="w-44 h-44 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin"
+              style={{ animationDuration: '3s' }}></div>
           </div>
         </div>
-        
+
         <div className="space-y-2">
-          <h2 className="text-2xl font-bold tracking-tight">AI 스타일러 가동 중</h2>
-          <p className="text-slate-400 min-h-[1.5rem] transition-all duration-500">
+          <h2 className="text-2xl font-black tracking-tight">AI 분석 중</h2>
+          <p className="text-gray-400 min-h-[1.5rem] transition-all duration-500">
             {messages[messageIndex]}
           </p>
         </div>
 
-        <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden border border-slate-700">
-          <div 
-            className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full transition-all duration-500"
+        {/* 프로그레스 바 */}
+        <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden border border-white/10">
+          <div
+            className="bg-gradient-to-r from-violet-500 to-purple-500 h-full transition-all duration-500 rounded-full"
             style={{ width: `${progress}%` }}
           ></div>
         </div>
 
-        <p className="text-xs text-slate-500 uppercase tracking-widest font-semibold">
-          GEMINI 3 PRO VISION • 1K RESOLUTION
-        </p>
+        <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+          <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+          <span className="uppercase tracking-widest font-semibold">GEMINI AI • 고해상도 처리 중</span>
+        </div>
       </div>
     </div>
   );

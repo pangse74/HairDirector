@@ -1,31 +1,167 @@
-
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 헤어 스타일러 3x3</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Noto+Sans+KR', sans-serif;
-            background-color: #f8fafc;
-        }
-    </style>
-<script type="importmap">
-{
-  "imports": {
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "react": "https://esm.sh/react@^19.2.4",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.38.0"
-  }
-}
-</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>헤어핏 - AI 헤어스타일 추천</title>
+  <meta name="description" content="3초 만에 인생 헤어 찾기! AI 얼굴형 분석 및 가상 헤어 체험">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap"
+    rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background: linear-gradient(180deg, #0a0a0f 0%, #12121a 100%);
+      min-height: 100vh;
+      color: #ffffff;
+      overflow-x: hidden;
+    }
+
+    /* 글로우 효과 */
+    .glow-purple {
+      box-shadow: 0 0 60px rgba(139, 92, 246, 0.5),
+        0 0 100px rgba(139, 92, 246, 0.3),
+        0 0 140px rgba(139, 92, 246, 0.1);
+    }
+
+    .glow-button {
+      background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 50%, #5b21b6 100%);
+      box-shadow: 0 0 30px rgba(139, 92, 246, 0.6),
+        0 4px 20px rgba(0, 0, 0, 0.3);
+      transition: all 0.3s ease;
+    }
+
+    .glow-button:hover {
+      transform: scale(1.02);
+      box-shadow: 0 0 50px rgba(139, 92, 246, 0.8),
+        0 6px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .glow-button:active {
+      transform: scale(0.98);
+    }
+
+    /* 글래스모피즘 카드 */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+    }
+
+    .glass-card-dark {
+      background: rgba(20, 20, 30, 0.8);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 20px;
+    }
+
+    /* 펄스 애니메이션 */
+    @keyframes pulse-glow {
+
+      0%,
+      100% {
+        box-shadow: 0 0 40px rgba(139, 92, 246, 0.4),
+          0 0 80px rgba(139, 92, 246, 0.2);
+      }
+
+      50% {
+        box-shadow: 0 0 60px rgba(139, 92, 246, 0.6),
+          0 0 120px rgba(139, 92, 246, 0.3);
+      }
+    }
+
+    .pulse-animation {
+      animation: pulse-glow 2s ease-in-out infinite;
+    }
+
+    /* 페이드인 애니메이션 */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .fade-in-up {
+      animation: fadeInUp 0.6s ease-out forwards;
+    }
+
+    .fade-in-up-delay-1 {
+      animation: fadeInUp 0.6s ease-out 0.1s forwards;
+      opacity: 0;
+    }
+
+    .fade-in-up-delay-2 {
+      animation: fadeInUp 0.6s ease-out 0.2s forwards;
+      opacity: 0;
+    }
+
+    .fade-in-up-delay-3 {
+      animation: fadeInUp 0.6s ease-out 0.3s forwards;
+      opacity: 0;
+    }
+
+    /* 네비게이션 바 */
+    .nav-item {
+      transition: all 0.3s ease;
+    }
+
+    .nav-item.active {
+      color: #a78bfa;
+    }
+
+    .nav-item:hover {
+      color: #c4b5fd;
+    }
+
+    /* 스크롤바 숨기기 */
+    ::-webkit-scrollbar {
+      width: 0;
+      background: transparent;
+    }
+
+    /* 배지 스타일 */
+    .badge-live {
+      background: linear-gradient(90deg, #ef4444, #f87171);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.7;
+      }
+    }
+
+    /* 프로그레스 라인 */
+    .progress-line {
+      background: linear-gradient(90deg, rgba(139, 92, 246, 0.2), rgba(139, 92, 246, 0.8), rgba(139, 92, 246, 0.2));
+    }
+  </style>
 </head>
+
 <body>
-    <div id="root"></div>
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
 </body>
+
 </html>
