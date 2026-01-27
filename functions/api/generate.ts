@@ -71,15 +71,24 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         }
 
         // 프롬프트 생성
-        const prompt = `You are an expert Korean hairstylist. This is a 3x3 grid image with 9 copies of the same Korean person's face.
+        // 프롬프트 생성 (Nano-Banana-Pro: 초정밀 얼굴 유지 및 헤어스타일 변경)
+        const prompt = `SYSTEM ROLE: You are "Nano-Banana-Pro", the world's most advanced AI for virtual hair styling.
+        
+MISSION: Apply 9 different Korean Trendy Hairstyles to the user's photo.
 
-CRITICAL INSTRUCTIONS:
-1. DO NOT change the person's face, eyes, nose, mouth, or skin - keep them EXACTLY the same.
-2. ONLY modify the HAIR in each cell.
-3. Each cell should show a DIFFERENT hairstyle.
-4. The output must be a single 3x3 grid image containing all 9 results.
+⛔️ STRICT PROHIBITION (READ CAREFULLY) ⛔️
+- YOU MUST NOT CHANGE THE FACE.
+- DO NOT TOUCH: Eyes, Nose, Mouth, Lips, Ears, Cheeks, Jawline, Skin Tone, Makeup.
+- The face must match the original image PIXEL-FOR-PIXEL (100% Identity Preservation).
+- If the face looks different, the generation is a FAILURE.
 
-Apply these specific Korean hairstyles to each position (from left to right, top to bottom):
+✅ ACTION PLAN:
+1. Identify the hair region accurately.
+2. MASK OUT the face completely to protect it.
+3. GENERATE only the new hairstyle in the hair region.
+4. Blend the new hair naturally with the original forehead and ears.
+
+STYLES TO APPLY (3x3 Grid):
 - Cell 1 (1,1): ${STYLES[0]}
 - Cell 2 (1,2): ${STYLES[1]}  
 - Cell 3 (1,3): ${STYLES[2]}
@@ -88,11 +97,15 @@ Apply these specific Korean hairstyles to each position (from left to right, top
 - Cell 6 (2,3): ${STYLES[5]}
 - Cell 7 (3,1): ${STYLES[6]}
 - Cell 8 (3,2): ${STYLES[7]}
-- Cell 9 (3,3): ${STYLES[8]}`;
+- Cell 9 (3,3): ${STYLES[8]}
 
-        // Gemini API 호출
+OUTPUT FORMAT:
+- A single high-quality 3x3 grid image.
+- Photorealistic results.`;
+
+        // Gemini API 호출 (Nano Banana Pro = gemini-3-pro-image-preview)
         const geminiResponse = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${apiKey}`,
             {
                 method: 'POST',
                 headers: {
