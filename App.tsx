@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { LoadingOverlay } from './components/LoadingOverlay';
 import { ResultView } from './components/ResultView';
@@ -7,6 +6,9 @@ import { SavedView } from './components/SavedView';
 import { generateHairstyleGrid } from './services/geminiService';
 import { addHistoryItem, saveStyle } from './services/storageService';
 import { AppState } from './types';
+import { HAIRSTYLE_DETAILS, HairstyleDetail } from './services/hairstyleData';
+import { StyleDetailPanel } from './components/StyleDetailPanel';
+
 
 const QUOTES = [
   "당신의 가치는 타인이 아닌 당신의 확신이 결정합니다.",
@@ -43,6 +45,7 @@ const App: React.FC = () => {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
   const [randomQuote, setRandomQuote] = useState("");
+  const [selectedStyle, setSelectedStyle] = useState<HairstyleDetail | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -52,6 +55,15 @@ const App: React.FC = () => {
     const randomIndex = Math.floor(Math.random() * QUOTES.length);
     setRandomQuote(QUOTES[randomIndex]);
   }, []);
+
+  // 스타일 클릭 핸들러
+  const handleStyleClick = (styleId: string) => {
+    // 도감에 없는 스타일이면 'default' 데이터를 사용 (Fallback)
+    const detail = HAIRSTYLE_DETAILS[styleId] || HAIRSTYLE_DETAILS['default'];
+    if (detail) {
+      setSelectedStyle(detail);
+    }
+  };
 
   const handleOpenKeyDialog = async () => {
     try {
@@ -344,6 +356,7 @@ const App: React.FC = () => {
           originalImage={originalImage!}
           resultImage={resultImage}
           onReset={handleReset}
+          onStyleClick={handleStyleClick}
         />
       );
     }
@@ -482,10 +495,10 @@ const App: React.FC = () => {
               {/* 메인 타이틀 */}
               <div className="text-center mb-8 fade-in-up-delay-1">
                 <h1 className="text-4xl font-black text-white mb-2 leading-tight">
-                  30초 만에
+                  커피 두 잔 값으로
                 </h1>
                 <h1 className="text-4xl font-black text-white leading-tight">
-                  인생 헤어스타일 찾기
+                  평생의 인생 헤어스타일 찾기
                 </h1>
                 <p className="text-gray-400 mt-4 text-sm">
                   AI 얼굴형 분석 및 가상 헤어 체험
@@ -571,16 +584,19 @@ const App: React.FC = () => {
                     videoId="L2Wcjvr6bNQ"
                     title="트렌디 레이어드 컷 가상체험"
                     onSave={() => handleSaveVideo('L2Wcjvr6bNQ', '트렌디 레이어드 컷')}
+                    onClick={() => handleStyleClick('layered')}
                   />
                   <YouTubeShort
                     videoId="bmzZ13cx_fA"
                     title="볼륨 에어펌 스타일링"
                     onSave={() => handleSaveVideo('bmzZ13cx_fA', '볼륨 에어펌')}
+                    onClick={() => handleStyleClick('leaf')}
                   />
                   <YouTubeShort
                     videoId="Dt3XwYI4lzo"
                     title="내추럴 시스루뱅 컷"
                     onSave={() => handleSaveVideo('Dt3XwYI4lzo', '내추럴 시스루뱅')}
+                    onClick={() => handleStyleClick('dandy')}
                   />
                 </div>
               </section>
@@ -611,6 +627,14 @@ const App: React.FC = () => {
       <main className="flex-1 flex flex-col overflow-y-auto pb-24 scrollbar-hide">
         {renderContent()}
       </main>
+
+      {/* 스타일 상세 패널 */}
+      {selectedStyle && (
+        <StyleDetailPanel
+          style={selectedStyle}
+          onClose={() => setSelectedStyle(null)}
+        />
+      )}
 
       {/* 하단 네비게이션 */}
       <nav className="fixed bottom-0 left-0 right-0 glass-card-dark border-t border-white/5 z-40">
@@ -786,24 +810,37 @@ const StyleCard: React.FC<{ color: string }> = ({ color }) => (
 );
 
 // 유튜브 쇼츠 컴포넌트
-const YouTubeShort: React.FC<{ videoId: string; onSave?: () => void }> = ({ videoId, onSave }) => (
-  <div className="aspect-[9/16] rounded-2xl overflow-hidden bg-black/50 hover:scale-105 transition-transform cursor-pointer relative group">
+const YouTubeShort: React.FC<{
+  videoId: string;
+  title?: string;
+  onSave?: () => void;
+  onClick?: () => void;
+}> = ({ videoId, title, onSave, onClick }) => (
+  <div
+    className="aspect-[9/16] rounded-2xl overflow-hidden bg-black/50 hover:scale-105 transition-transform cursor-pointer relative group"
+    onClick={onClick}
+  >
     <iframe
-      src={`https://www.youtube.com/embed/${videoId}?loop=1&playlist=${videoId}`}
-      title="YouTube Short"
-      className="w-full h-full"
+      src={`https://www.youtube.com/embed/${videoId}?loop=1&playlist=${videoId}&controls=0&disablekb=1&fs=0&modestbranding=1`}
+      title={title || "YouTube Short"}
+      className="w-full h-full pointer-events-none"
       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
       allowFullScreen
     />
-    {/* 저장 버튼 */}
+    <div className="absolute inset-0 bg-transparent z-10"></div>
     {onSave && (
       <button
         onClick={(e) => { e.stopPropagation(); onSave(); }}
-        className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 text-white/70 hover:text-pink-400 hover:bg-black/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all z-10"
+        className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 text-white/70 hover:text-pink-400 hover:bg-black/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all z-20"
       >
         <i className="fas fa-bookmark text-sm"></i>
       </button>
     )}
+    <div className="absolute bottom-2 left-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+      <span className="text-[10px] text-white bg-black/50 px-2 py-1 rounded-full truncate block text-center">
+        상세보기
+      </span>
+    </div>
   </div>
 );
 

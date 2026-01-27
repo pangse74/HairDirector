@@ -6,16 +6,44 @@ interface Props {
   originalImage: string;
   resultImage: string;
   onReset: () => void;
+  onStyleClick: (styleId: string) => void;
 }
 
 const STYLES = ["포마드컷", "리프컷", "댄디컷", "리젠트컷", "쉐도우펌", "아이비리그", "애즈펌", "슬릭백", "투블럭컷"];
 
-export const ResultView: React.FC<Props> = ({ originalImage, resultImage, onReset }) => {
+const STYLE_ID_MAP: Record<string, string> = {
+  "포마드컷": "guile", // 포마드/가일 유사
+  "리프컷": "leaf",
+  "댄디컷": "dandy",
+  "리젠트컷": "regent",
+  "쉐도우펌": "perm",
+  "아이비리그": "ivy",
+  "애즈펌": "parting",
+  "슬릭백": "slick",
+  "투블럭컷": "twoblock"
+};
+
+export const ResultView: React.FC<Props> = ({ originalImage, resultImage, onReset, onStyleClick }) => {
   const [selectedStyle, setSelectedStyle] = useState<number | null>(null);
   const [savedStyles, setSavedStyles] = useState<Set<number>>(new Set());
   const [showSaveToast, setShowSaveToast] = useState(false);
   const [autoSaved, setAutoSaved] = useState(false);
   const hasAutoDownloaded = useRef(false);
+
+  // ... (keep lines 20-192: utils and rendering up to grid start)
+  // Since I cannot include 170 lines in replacement content easily without rewriting them,
+  // I will target the two separate blocks if possible, OR I will just fix the top block first, 
+  // then fix the bottom block in a second step, or rely on precise context matching.
+
+  // Let's fix the top block (lines 27-31) first.
+
+  // Actually, I can use the previous error context to just fix the top part.
+
+  // Wait, I also need to update the grid buttons. The grid buttons are further down.
+  // I will make this tool call fix BOTH by using a larger range if possible, or just fix the top error first to be safe.
+
+  // Let's fix the top error first.
+
 
   // Base64를 Blob으로 변환하는 유틸리티 함수
   const base64ToBlob = (base64: string): Blob => {
@@ -195,7 +223,10 @@ export const ResultView: React.FC<Props> = ({ originalImage, resultImage, onRese
             {STYLES.map((style, i) => (
               <button
                 key={i}
-                onClick={() => setSelectedStyle(i)}
+                onClick={() => {
+                  setSelectedStyle(i);
+                  onStyleClick(STYLE_ID_MAP[style] || 'default');
+                }}
                 className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${selectedStyle === i
                   ? 'bg-violet-600/30 border-violet-500 scale-105'
                   : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-violet-500/50'
