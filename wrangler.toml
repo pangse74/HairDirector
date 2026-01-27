@@ -1,0 +1,15 @@
+# wrangler.toml - Cloudflare Pages 설정
+
+name = "hairfit"
+compatibility_date = "2024-01-01"
+
+# Pages 설정
+pages_build_output_dir = "dist"
+
+# 환경 변수 (Cloudflare 대시보드에서 직접 설정 권장)
+# [vars]
+# GEMINI_API_KEY = "your-api-key-here"
+
+# 프로덕션 환경
+[env.production]
+# 프로덕션 환경 변수는 Cloudflare 대시보드에서 설정하세요
