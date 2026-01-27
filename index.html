@@ -99,52 +99,55 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap"
     rel="stylesheet">
 
-  <!-- 구조화된 데이터 (JSON-LD) - 조직 정보 -->
+  <!-- 구조화된 데이터 (JSON-LD) - 조직 정보 및 앱 정보 -->
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "WebApplication",
-    "name": "헤어핏",
-    "alternateName": ["HairFit", "AI 헤어스타일 추천"],
-    "description": "AI 얼굴형 분석으로 나에게 딱 맞는 헤어스타일을 추천받으세요! 30초 만에 인생 헤어스타일 찾기. 9가지 한국 인기 헤어스타일 가상 체험.",
-    "url": "https://hairdirector.site/",
-    "applicationCategory": "LifestyleApplication",
-    "operatingSystem": "Web",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "KRW"
-    },
-    "aggregateRating": {
-      "@type": "AggregateRating",
-      "ratingValue": "4.8",
-      "ratingCount": "1250",
-      "bestRating": "5",
-      "worstRating": "1"
-    },
-    "author": {
-      "@type": "Organization",
+  [
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
       "name": "헤어핏",
-      "url": "https://hairdirector.site/"
+      "alternateName": ["HairFit", "AI 헤어스타일 추천", "헤어디렉터"],
+      "description": "AI 얼굴형 분석으로 나에게 딱 맞는 헤어스타일을 추천받으세요! 30초 만에 인생 헤어스타일 찾기. 9가지 한국 인기 헤어스타일 가상 체험.",
+      "url": "https://hairdirector.site/",
+      "applicationCategory": "LifestyleApplication",
+      "operatingSystem": "Web",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "KRW",
+        "availability": "https://schema.org/InStock"
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "ratingCount": "1250",
+        "bestRating": "5",
+        "worstRating": "1"
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "헤어핏",
+        "url": "https://hairdirector.site/"
+      },
+      "isAccessibleForFree": true 
     },
-    "publisher": {
+    {
+      "@context": "https://schema.org",
       "@type": "Organization",
-      "name": "헤어핏",
-      "logo": {
-        "@type": "ImageObject",
-        "url": "https://hairdirector.site/logo.png"
+      "name": "헤어핏 (HairFit)",
+      "url": "https://hairdirector.site",
+      "logo": "https://hairdirector.site/logo.png",
+      "sameAs": [
+        "https://www.instagram.com/hairfit_official",
+        "https://twitter.com/hairfit"
+      ],
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "email": "support@hairdirector.site",
+        "contactType": "customer support"
       }
-    },
-    "inLanguage": "ko-KR",
-    "screenshot": "https://hairdirector.site/og-image.png",
-    "featureList": [
-      "AI 얼굴형 분석",
-      "헤어스타일 가상 체험",
-      "9가지 한국 인기 헤어스타일",
-      "3x3 그리드 결과 이미지",
-      "저장 및 공유 기능"
-    ]
-  }
+    }
+  ]
   </script>
 
   <!-- 구조화된 데이터 (JSON-LD) - FAQ -->

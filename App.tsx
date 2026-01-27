@@ -533,25 +533,25 @@ const App: React.FC = () => {
                 </div>
               )}
 
-              {/* 기능 카드 */}
-              <div className="w-full max-w-md fade-in-up-delay-3">
+              {/* 기능 카드 섹션 */}
+              <section className="w-full max-w-md fade-in-up-delay-3" aria-label="주요 기능">
                 <div className="glass-card-dark p-4">
                   <div className="flex items-center justify-around">
-                    <FeatureItem icon="fa-upload" label="업로드" />
+                    <FeatureItem icon="fa-upload" label="사진 업로드" />
                     <div className="w-16 h-0.5 bg-gradient-to-r from-violet-500/0 via-violet-500/50 to-violet-500/0"></div>
-                    <FeatureItem icon="fa-face-smile" label="AI 분석" />
+                    <FeatureItem icon="fa-face-smile" label="AI 얼굴 분석" />
                     <div className="w-16 h-0.5 bg-gradient-to-r from-violet-500/0 via-violet-500/50 to-violet-500/0"></div>
                     <FeatureItem icon="fa-scissors" label="스타일 추천" />
                   </div>
                 </div>
-              </div>
+              </section>
 
               {/* 인기 스타일 섹션 */}
-              <div className="w-full max-w-md mt-8 fade-in-up-delay-3">
+              <section className="w-full max-w-md mt-8 fade-in-up-delay-3" aria-labelledby="popular-styles-title">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <h2 className="text-white font-bold text-lg">인기 스타일</h2>
-                    <span className="badge-live px-2 py-0.5 rounded text-[10px] font-bold text-white uppercase">
+                    <h2 id="popular-styles-title" className="text-white font-bold text-lg">인기라 헤어스타일</h2>
+                    <span className="badge-live px-2 py-0.5 rounded text-[10px] font-bold text-white uppercase" aria-label="실시간 인기">
                       Live
                     </span>
                   </div>
@@ -563,24 +563,27 @@ const App: React.FC = () => {
                     <i className="fas fa-chevron-right ml-1 text-xs text-violet-400"></i>
                   </button>
                 </div>
-                <p className="text-gray-500 text-sm mb-4">지금 가장 사랑받는 디자인</p>
+                <p className="text-gray-500 text-sm mb-4">지금 가장 사랑받는 2024 트렌드 디자인</p>
 
                 {/* 스타일 프리뷰 - 유튜브 쇼츠 */}
                 <div className="grid grid-cols-3 gap-3">
                   <YouTubeShort
                     videoId="L2Wcjvr6bNQ"
+                    title="트렌디 레이어드 컷 가상체험"
                     onSave={() => handleSaveVideo('L2Wcjvr6bNQ', '트렌디 레이어드 컷')}
                   />
                   <YouTubeShort
                     videoId="bmzZ13cx_fA"
+                    title="볼륨 에어펌 스타일링"
                     onSave={() => handleSaveVideo('bmzZ13cx_fA', '볼륨 에어펌')}
                   />
                   <YouTubeShort
                     videoId="Dt3XwYI4lzo"
+                    title="내추럴 시스루뱅 컷"
                     onSave={() => handleSaveVideo('Dt3XwYI4lzo', '내추럴 시스루뱅')}
                   />
                 </div>
-              </div>
+              </section>
             </div>
           )}
 
