@@ -1,0 +1,6 @@
+# Redirect www to non-www
+https://www.hairdirector.site/* https://hairdirector.site/:splat 301!
+
+# Redirect http to https (Cloudflare automatically handles this, but explicit rules help)
+http://hairdirector.site/* https://hairdirector.site/:splat 301!
+http://www.hairdirector.site/* https://hairdirector.site/:splat 301!
