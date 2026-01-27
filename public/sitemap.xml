@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 
+                            http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+  
+  <!-- 메인 페이지 -->
+  <url>
+    <loc>https://hairdirector.site/</loc>
+    <lastmod>2026-01-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://hairdirector.site/og-image.png</image:loc>
+      <image:title>헤어핏 AI 헤어스타일 추천</image:title>
+      <image:caption>AI 얼굴형 분석으로 나에게 딱 맞는 헤어스타일을 추천받으세요</image:caption>
+    </image:image>
+  </url>
+  
+  <!-- AI 분석 페이지 -->
+  <url>
+    <loc>https://hairdirector.site/#analyze</loc>
+    <lastmod>2026-01-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  
+  <!-- 히스토리 페이지 -->
+  <url>
+    <loc>https://hairdirector.site/#history</loc>
+    <lastmod>2026-01-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  
+  <!-- 저장된 스타일 페이지 -->
+  <url>
+    <loc>https://hairdirector.site/#saved</loc>
+    <lastmod>2026-01-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  
+</urlset>

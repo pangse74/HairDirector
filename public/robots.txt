@@ -1,0 +1,31 @@
+# 헤어핏 - AI 헤어스타일 추천 서비스
+# robots.txt - 검색 로봇 접근 허용 설정
+# https://hairdirector.site/
+
+# Google 검색 로봇
+User-agent: Googlebot
+Allow: /
+Disallow: /api/
+Disallow: /_*
+
+# 네이버 검색 로봇 (Yeti)
+User-agent: Yeti
+Allow: /
+Disallow: /api/
+Disallow: /_*
+
+# 모든 검색 로봇에 대해 허용
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /functions/
+Disallow: /*.json$
+
+# 크롤링 지연 (서버 부하 방지)
+Crawl-delay: 1
+
+# 사이트맵 위치
+Sitemap: https://hairdirector.site/sitemap.xml
+
+# Host (기본 도메인)
+Host: https://hairdirector.site

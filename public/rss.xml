@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" 
+     xmlns:atom="http://www.w3.org/2005/Atom"
+     xmlns:content="http://purl.org/rss/1.0/modules/content/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>헤어핏 - AI 헤어스타일 추천</title>
+    <description>AI 얼굴형 분석으로 나에게 딱 맞는 헤어스타일을 추천받으세요! 30초 만에 인생 헤어스타일 찾기. 9가지 한국 인기 헤어스타일 가상 체험.</description>
+    <link>https://hairdirector.site/</link>
+    <language>ko-KR</language>
+    <copyright>© 2026 헤어핏. All rights reserved.</copyright>
+    <lastBuildDate>Mon, 27 Jan 2026 12:00:00 +0900</lastBuildDate>
+    <pubDate>Mon, 27 Jan 2026 12:00:00 +0900</pubDate>
+    <generator>HairFit RSS Generator</generator>
+    <managingEditor>hello@hairdirector.site (헤어핏)</managingEditor>
+    <webMaster>hello@hairdirector.site (헤어핏)</webMaster>
+    
+    <atom:link href="https://hairdirector.site/rss.xml" rel="self" type="application/rss+xml"/>
+    
+    <image>
+      <url>https://hairdirector.site/logo.png</url>
+      <title>헤어핏</title>
+      <link>https://hairdirector.site/</link>
+      <width>512</width>
+      <height>512</height>
+    </image>
+    
+    <item>
+      <title>헤어핏 서비스 오픈!</title>
+      <description>AI 얼굴형 분석으로 나에게 딱 맞는 헤어스타일을 추천받으세요. 30초 만에 9가지 한국 인기 헤어스타일을 가상으로 체험해보세요.</description>
+      <content:encoded><![CDATA[
+        <h2>헤어핏이 오픈했습니다!</h2>
+        <p>AI 얼굴형 분석 기술을 활용한 헤어스타일 추천 서비스입니다.</p>
+        <h3>주요 기능</h3>
+        <ul>
+          <li>AI 얼굴형 분석</li>
+          <li>9가지 한국 인기 헤어스타일 추천</li>
+          <li>3x3 그리드 형태 결과 이미지</li>
+          <li>저장 및 공유 기능</li>
+        </ul>
+        <p>지금 바로 <a href="https://hairdirector.site/">헤어핏</a>에서 인생 헤어스타일을 찾아보세요!</p>
+      ]]></content:encoded>
+      <link>https://hairdirector.site/</link>
+      <guid isPermaLink="true">https://hairdirector.site/#launch-2026</guid>
+      <pubDate>Mon, 27 Jan 2026 12:00:00 +0900</pubDate>
+      <dc:creator>헤어핏</dc:creator>
+      <category>뉴스</category>
+      <category>서비스 오픈</category>
+    </item>
+    
+    <item>
+      <title>AI 헤어스타일 추천 사용법</title>
+      <description>헤어핏에서 AI 헤어스타일 추천을 받는 방법을 알아보세요. 사진 업로드부터 결과 저장까지 간단한 3단계!</description>
+      <content:encoded><![CDATA[
+        <h2>헤어핏 사용법</h2>
+        <ol>
+          <li><strong>사진 업로드</strong>: 얼굴이 잘 보이는 정면 사진을 업로드하거나 카메라로 촬영하세요.</li>
+          <li><strong>AI 분석</strong>: AI가 얼굴형을 분석하고 어울리는 헤어스타일을 추천합니다.</li>
+          <li><strong>결과 확인</strong>: 9가지 추천 헤어스타일을 확인하고 마음에 드는 스타일을 저장하세요.</li>
+        </ol>
+        <p>간단하게 30초면 끝!</p>
+      ]]></content:encoded>
+      <link>https://hairdirector.site/#how-to-use</link>
+      <guid isPermaLink="true">https://hairdirector.site/#how-to-use-2026</guid>
+      <pubDate>Mon, 27 Jan 2026 12:00:00 +0900</pubDate>
+      <dc:creator>헤어핏</dc:creator>
+      <category>가이드</category>
+      <category>사용법</category>
+    </item>
+  </channel>
+</rss>

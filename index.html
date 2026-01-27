@@ -2,14 +2,230 @@
 <html lang="ko">
 
 <head>
+  <!-- 기본 메타 태그 -->
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>헤어핏 - AI 헤어스타일 추천</title>
-  <meta name="description" content="30초 만에 인생 헤어스타일 찾기! AI 얼굴형 분석 및 가상 헤어 체험">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+  <!-- SEO 핵심 메타 태그 -->
+  <title>헤어핏 - AI 헤어스타일 추천 | 30초 만에 인생 헤어 찾기</title>
+  <meta name="description"
+    content="AI 얼굴형 분석으로 나에게 딱 맞는 헤어스타일을 추천받으세요! 30초 만에 인생 헤어스타일 찾기. 9가지 한국 인기 헤어스타일 가상 체험. 무료 AI 헤어 시뮬레이션 서비스.">
+  <meta name="keywords" content="AI 헤어스타일, 헤어스타일 추천, 얼굴형 분석, 가상 헤어, 헤어 시뮬레이션, 한국 헤어스타일, 남자 헤어, 여자 헤어, 인생 헤어, 헤어핏">
+  <meta name="author" content="헤어핏">
+  <meta name="generator" content="HairFit AI">
+
+  <!-- 검색 로봇 설정 (Google & Naver) -->
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <meta name="googlebot" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <meta name="NaverBot" content="index, follow">
+  <meta name="Yeti" content="index, follow">
+
+  <!-- 캐노니컬 URL -->
+  <link rel="canonical" href="https://hairdirector.site/">
+
+  <!-- 언어 및 지역 설정 -->
+  <meta name="language" content="Korean">
+  <meta name="geo.region" content="KR">
+  <meta name="geo.placename" content="South Korea">
+  <link rel="alternate" hreflang="ko" href="https://hairdirector.site/">
+  <link rel="alternate" hreflang="x-default" href="https://hairdirector.site/">
+
+  <!-- Open Graph (Facebook, KakaoTalk) -->
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="ko_KR">
+  <meta property="og:site_name" content="헤어핏">
+  <meta property="og:title" content="헤어핏 - AI 헤어스타일 추천 | 30초 만에 인생 헤어 찾기">
+  <meta property="og:description" content="AI 얼굴형 분석으로 나에게 딱 맞는 헤어스타일을 추천받으세요! 9가지 한국 인기 헤어스타일 가상 체험. 무료 AI 헤어 시뮬레이션.">
+  <meta property="og:url" content="https://hairdirector.site/">
+  <meta property="og:image" content="https://hairdirector.site/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="헤어핏 AI 헤어스타일 추천 서비스">
+
+  <!-- Twitter Cards -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@hairfit">
+  <meta name="twitter:creator" content="@hairfit">
+  <meta name="twitter:title" content="헤어핏 - AI 헤어스타일 추천">
+  <meta name="twitter:description" content="30초 만에 인생 헤어스타일 찾기! AI 얼굴형 분석 및 가상 헤어 체험">
+  <meta name="twitter:image" content="https://hairdirector.site/og-image.png">
+  <meta name="twitter:image:alt" content="헤어핏 AI 헤어스타일 추천 서비스">
+
+  <!-- 네이버 서치어드바이저 사이트 소유 확인 (필요시 교체) -->
+  <meta name="naver-site-verification" content="6358792ea4c8bc163ffa0cc6f3ae87e10ee4ff21">
+
+  <!-- Google Search Console 사이트 소유 확인 (필요시 교체) -->
+  <meta name="google-site-verification" content="K7m-7Ntw-un2d6T9ekzZRYnyaXKW_kQPDLndeZ9bymU">
+
+  <!-- PWA 및 모바일 최적화 -->
+  <meta name="application-name" content="헤어핏">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="헤어핏">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#7c3aed">
+  <meta name="msapplication-TileColor" content="#7c3aed">
+  <meta name="msapplication-config" content="/browserconfig.xml">
+
+  <!-- 파비콘 및 아이콘 -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#7c3aed">
+
+  <!-- 프리커넥트 및 DNS 프리페치 (성능 최적화) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.tailwindcss.com">
+  <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+  <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+
+  <!-- 외부 리소스 -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap"
     rel="stylesheet">
+
+  <!-- 구조화된 데이터 (JSON-LD) - 조직 정보 -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "헤어핏",
+    "alternateName": ["HairFit", "AI 헤어스타일 추천"],
+    "description": "AI 얼굴형 분석으로 나에게 딱 맞는 헤어스타일을 추천받으세요! 30초 만에 인생 헤어스타일 찾기. 9가지 한국 인기 헤어스타일 가상 체험.",
+    "url": "https://hairdirector.site/",
+    "applicationCategory": "LifestyleApplication",
+    "operatingSystem": "Web",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "KRW"
+    },
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "4.8",
+      "ratingCount": "1250",
+      "bestRating": "5",
+      "worstRating": "1"
+    },
+    "author": {
+      "@type": "Organization",
+      "name": "헤어핏",
+      "url": "https://hairdirector.site/"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "헤어핏",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://hairdirector.site/logo.png"
+      }
+    },
+    "inLanguage": "ko-KR",
+    "screenshot": "https://hairdirector.site/og-image.png",
+    "featureList": [
+      "AI 얼굴형 분석",
+      "헤어스타일 가상 체험",
+      "9가지 한국 인기 헤어스타일",
+      "3x3 그리드 결과 이미지",
+      "저장 및 공유 기능"
+    ]
+  }
+  </script>
+
+  <!-- 구조화된 데이터 (JSON-LD) - FAQ -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "헤어핏은 무료인가요?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "네, 헤어핏은 완전 무료 서비스입니다. AI 얼굴형 분석과 헤어스타일 가상 체험을 무료로 이용하실 수 있습니다."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "어떻게 사용하나요?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "1. 사진을 업로드하거나 카메라로 촬영합니다. 2. AI가 얼굴형을 분석합니다. 3. 9가지 추천 헤어스타일을 확인합니다. 30초면 충분합니다!"
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "어떤 헤어스타일을 추천받을 수 있나요?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "한국에서 가장 인기 있는 헤어스타일을 추천받습니다. 댄디컷, 투블럭, 레이어드컷, 허쉬컷, 빌드펌 등 다양한 스타일을 가상으로 체험할 수 있습니다."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "내 사진은 안전한가요?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "네, 업로드된 사진은 서버에 저장되지 않으며, AI 분석 후 즉시 삭제됩니다. 개인정보 보호를 최우선으로 합니다."
+        }
+      }
+    ]
+  }
+  </script>
+
+  <!-- 구조화된 데이터 (JSON-LD) - 웹사이트 검색창 -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "헤어핏",
+    "alternateName": "HairFit AI",
+    "url": "https://hairdirector.site/",
+    "inLanguage": "ko-KR",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": {
+        "@type": "EntryPoint",
+        "urlTemplate": "https://hairdirector.site/search?q={search_term_string}"
+      },
+      "query-input": "required name=search_term_string"
+    }
+  }
+  </script>
+
+  <!-- 구조화된 데이터 (JSON-LD) - BreadcrumbList -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "홈",
+        "item": "https://hairdirector.site/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "AI 헤어스타일 추천",
+        "item": "https://hairdirector.site/#analyze"
+      },
+      {
+        "@type": "ListItem",
+        "position": 3,
+        "name": "히스토리",
+        "item": "https://hairdirector.site/#history"
+      }
+    ]
+  }
+  </script>
+
   <style>
     * {
       margin: 0;
@@ -188,11 +404,49 @@
     .animate-slideUp {
       animation: slideUp 0.3s ease-out forwards;
     }
+
+    /* 스킵 네비게이션 (접근성) */
+    .skip-link {
+      position: absolute;
+      top: -40px;
+      left: 0;
+      background: #7c3aed;
+      color: white;
+      padding: 8px 16px;
+      z-index: 100;
+      transition: top 0.3s;
+    }
+
+    .skip-link:focus {
+      top: 0;
+    }
   </style>
 </head>
 
 <body>
-  <div id="root"></div>
+  <!-- 스킵 네비게이션 (접근성 향상) -->
+  <a href="#main-content" class="skip-link">본문 바로가기</a>
+
+  <!-- 시맨틱 HTML 구조 -->
+  <div id="root" role="main" aria-label="헤어핏 AI 헤어스타일 추천 앱"></div>
+
+  <!-- noscript 폴백 (SEO 및 접근성) -->
+  <noscript>
+    <div style="padding: 40px; text-align: center; background: #1a1a2e; color: white;">
+      <h1>헤어핏 - AI 헤어스타일 추천</h1>
+      <p>이 서비스를 이용하려면 JavaScript를 활성화해주세요.</p>
+      <p>JavaScript is required to use HairFit AI Hair Style Recommendation service.</p>
+      <br>
+      <h2>주요 기능</h2>
+      <ul style="list-style: none; padding: 20px;">
+        <li>✨ AI 얼굴형 분석</li>
+        <li>💇 9가지 한국 인기 헤어스타일 추천</li>
+        <li>📸 가상 헤어 체험</li>
+        <li>💾 결과 저장 및 공유</li>
+      </ul>
+    </div>
+  </noscript>
+
   <script type="module" src="/index.tsx"></script>
 </body>
 

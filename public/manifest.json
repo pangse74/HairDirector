@@ -1,0 +1,112 @@
+{
+    "name": "헤어핏 - AI 헤어스타일 추천",
+    "short_name": "헤어핏",
+    "description": "AI 얼굴형 분석으로 나에게 딱 맞는 헤어스타일을 추천받으세요! 30초 만에 인생 헤어스타일 찾기.",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#0a0a0f",
+    "theme_color": "#7c3aed",
+    "lang": "ko-KR",
+    "dir": "ltr",
+    "categories": [
+        "lifestyle",
+        "beauty",
+        "utilities"
+    ],
+    "icons": [
+        {
+            "src": "/icons/icon-72x72.png",
+            "sizes": "72x72",
+            "type": "image/png",
+            "purpose": "maskable any"
+        },
+        {
+            "src": "/icons/icon-96x96.png",
+            "sizes": "96x96",
+            "type": "image/png",
+            "purpose": "maskable any"
+        },
+        {
+            "src": "/icons/icon-128x128.png",
+            "sizes": "128x128",
+            "type": "image/png",
+            "purpose": "maskable any"
+        },
+        {
+            "src": "/icons/icon-144x144.png",
+            "sizes": "144x144",
+            "type": "image/png",
+            "purpose": "maskable any"
+        },
+        {
+            "src": "/icons/icon-152x152.png",
+            "sizes": "152x152",
+            "type": "image/png",
+            "purpose": "maskable any"
+        },
+        {
+            "src": "/icons/icon-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable any"
+        },
+        {
+            "src": "/icons/icon-384x384.png",
+            "sizes": "384x384",
+            "type": "image/png",
+            "purpose": "maskable any"
+        },
+        {
+            "src": "/icons/icon-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable any"
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "/screenshots/main.png",
+            "sizes": "1080x1920",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "헤어핏 메인 화면"
+        },
+        {
+            "src": "/screenshots/result.png",
+            "sizes": "1080x1920",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "AI 헤어스타일 추천 결과"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "새로운 분석 시작",
+            "short_name": "분석",
+            "description": "새 사진으로 헤어스타일 분석 시작",
+            "url": "/#analyze",
+            "icons": [
+                {
+                    "src": "/icons/analyze-icon.png",
+                    "sizes": "96x96"
+                }
+            ]
+        },
+        {
+            "name": "히스토리 보기",
+            "short_name": "히스토리",
+            "description": "이전 분석 결과 확인",
+            "url": "/#history",
+            "icons": [
+                {
+                    "src": "/icons/history-icon.png",
+                    "sizes": "96x96"
+                }
+            ]
+        }
+    ],
+    "related_applications": [],
+    "prefer_related_applications": false
+}
