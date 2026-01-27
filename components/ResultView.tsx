@@ -160,7 +160,7 @@ export const ResultView: React.FC<Props> = ({ originalImage, resultImage, onRese
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="w-full h-full flex flex-col">
       {/* 헤더 */}
       <header className="flex items-center justify-between px-5 py-4">
         <button
