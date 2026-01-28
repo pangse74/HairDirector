@@ -85,28 +85,34 @@ MISSION: Apply 9 different Korean Trendy Hairstyles to the user's photo.
 - The face must match the original image PIXEL-FOR-PIXEL (100% Identity Preservation).
 - If the face looks different, the generation is a FAILURE.
 
+⛔️ STRICT PROHIBITION - NO TEXT (READ CAREFULLY) ⛔️
+- DO NOT render any text, letters, words, numbers, or characters on the image.
+- DO NOT add labels, titles, captions, hairstyle names, or watermarks.
+- The output must be PURE PHOTOGRAPHY only.
+- If any text appears in the output, the generation is a FAILURE.
+
 ✅ ACTION PLAN:
 1. Identify the hair region accurately.
 2. MASK OUT the face completely to protect it.
 3. GENERATE only the new hairstyle in the hair region.
 4. Blend the new hair naturally with the original forehead and ears.
+5. Ensure NO TEXT is rendered anywhere in the final image.
 
-2. TEXT-FREE OUTPUT (MANDATORY):
-   - Output ONLY a clean photograph
-   - DO NOT render any text, letters, words, or characters
-   - DO NOT add labels, titles, captions, or watermarks
-   - DO NOT write hairstyle names on the image
-   - Imagine this is a photo from a camera - cameras don't add text
-   - Final image = faces + hair ONLY, absolutely nothing else
+STYLES TO APPLY (3x3 Grid) - VISUALIZE ONLY, DO NOT WRITE:
+- Cell 1 (1,1): ${STYLES[0]}
+- Cell 2 (1,2): ${STYLES[1]}
+- Cell 3 (1,3): ${STYLES[2]}
+- Cell 4 (2,1): ${STYLES[3]}
+- Cell 5 (2,2): ${STYLES[4]}
+- Cell 6 (2,3): ${STYLES[5]}
+- Cell 7 (3,1): ${STYLES[6]}
+- Cell 8 (3,2): ${STYLES[7]}
+- Cell 9 (3,3): ${STYLES[8]}
 
-3. GRID: 3 rows × 3 columns, each cell = 1 hairstyle variation
-
-HAIRSTYLES:
-Top row: ${STYLES[0]}, ${STYLES[1]}, ${STYLES[2]}
-Middle row: ${STYLES[3]}, ${STYLES[4]}, ${STYLES[5]}
-Bottom row: ${STYLES[6]}, ${STYLES[7]}, ${STYLES[8]}
-
-OUTPUT: Clean 3x3 photo grid with NO TEXT anywhere.`;
+OUTPUT FORMAT:
+- A single high-quality 3x3 grid image.
+- Photorealistic results.
+- ZERO text anywhere in the image.`;
 
         // Gemini API 호출 (Nano Banana Pro = gemini-3-pro-image-preview)
         const geminiResponse = await fetch(
