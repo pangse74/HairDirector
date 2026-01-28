@@ -8,6 +8,7 @@ import { addHistoryItem, saveStyle } from './services/storageService';
 import { AppState, FaceAnalysisResult } from './types';
 import { HAIRSTYLE_DETAILS, HairstyleDetail } from './services/hairstyleData';
 import { StyleDetailPanel } from './components/StyleDetailPanel';
+import { VideoConsultingModal } from './components/VideoConsultingModal';
 
 
 const QUOTES = [
@@ -49,6 +50,7 @@ const App: React.FC = () => {
   // 새로운 상태: 분석 결과와 추천 스타일
   const [analysisResult, setAnalysisResult] = useState<FaceAnalysisResult | null>(null);
   const [recommendedStyles, setRecommendedStyles] = useState<string[]>([]);
+  const [selectedVideo, setSelectedVideo] = useState<{ videoId: string; title: string } | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -616,19 +618,19 @@ const App: React.FC = () => {
                     videoId="L2Wcjvr6bNQ"
                     title="트렌디 레이어드 컷 가상체험"
                     onSave={() => handleSaveVideo('L2Wcjvr6bNQ', '트렌디 레이어드 컷')}
-                    onClick={() => handleStyleClick('layered')}
+                    onClick={() => setSelectedVideo({ videoId: 'L2Wcjvr6bNQ', title: '트렌디 레이어드 컷 가상체험' })}
                   />
                   <YouTubeShort
                     videoId="bmzZ13cx_fA"
                     title="볼륨 에어펌 스타일링"
                     onSave={() => handleSaveVideo('bmzZ13cx_fA', '볼륨 에어펌')}
-                    onClick={() => handleStyleClick('leaf')}
+                    onClick={() => setSelectedVideo({ videoId: 'bmzZ13cx_fA', title: '볼륨 에어펌 스타일링' })}
                   />
                   <YouTubeShort
                     videoId="Dt3XwYI4lzo"
                     title="내추럴 시스루뱅 컷"
                     onSave={() => handleSaveVideo('Dt3XwYI4lzo', '내추럴 시스루뱅')}
-                    onClick={() => handleStyleClick('dandy')}
+                    onClick={() => setSelectedVideo({ videoId: 'Dt3XwYI4lzo', title: '내추럴 시스루뱅 컷' })}
                   />
                 </div>
               </section>
@@ -665,6 +667,15 @@ const App: React.FC = () => {
         <StyleDetailPanel
           style={selectedStyle}
           onClose={() => setSelectedStyle(null)}
+        />
+      )}
+
+      {/* 비디오 컨설팅 모달 */}
+      {selectedVideo && (
+        <VideoConsultingModal
+          videoId={selectedVideo.videoId}
+          title={selectedVideo.title}
+          onClose={() => setSelectedVideo(null)}
         />
       )}
 
