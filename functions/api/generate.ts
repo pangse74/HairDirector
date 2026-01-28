@@ -82,6 +82,12 @@ MISSION: Apply 9 different Korean Trendy Hairstyles to the user's photo.
 - The face must match the original image PIXEL-FOR-PIXEL (100% Identity Preservation).
 - If the face looks different, the generation is a FAILURE.
 
+✅ TEXT PLACEMENT INSTRUCTION ✅
+- You MUST add the name of the hairstyle (e.g., "쉐도우펌", "리프컷") at the **BOTTOM CENTER** of its respective cell.
+- The text must be in Korean, **SMALL and SUBTLE**. Use a minimal font size that is readable but not distracting.
+- White text with a thin shadow or outline is recommended for visibility.
+- ⛔️ NEGATIVE CONSTRAINT: Do NOT place text at the Top, Middle, or Corners. ONLY at the BOTTOM CENTER of each cell.
+
 ✅ ACTION PLAN:
 1. Identify the hair region accurately.
 2. MASK OUT the face completely to protect it.
