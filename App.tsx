@@ -462,7 +462,7 @@ const App: React.FC = () => {
                 className="w-full py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-bold text-lg flex items-center justify-center gap-3 hover:opacity-90 transition-all glow-button"
               >
                 <i className="fas fa-magic"></i>
-                AI 분석 시작
+                $5.99 결제하고 AI 분석 시작
               </button>
 
               {/* 다른 사진 선택 */}
