@@ -1,11 +1,11 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { LoadingOverlay } from './components/LoadingOverlay';
-import { ResultView } from './components/ResultView';
 import { HistoryView } from './components/HistoryView';
 import { SavedView } from './components/SavedView';
-import { generateHairstyleGrid } from './services/geminiService';
+import { AnalysisResultView } from './components/AnalysisResultView';
+import { generateHairstyleGrid, analyzeFace } from './services/geminiService';
 import { addHistoryItem, saveStyle } from './services/storageService';
-import { AppState } from './types';
+import { AppState, FaceAnalysisResult } from './types';
 import { HAIRSTYLE_DETAILS, HairstyleDetail } from './services/hairstyleData';
 import { StyleDetailPanel } from './components/StyleDetailPanel';
 
@@ -46,6 +46,9 @@ const App: React.FC = () => {
   const [cameraReady, setCameraReady] = useState(false);
   const [randomQuote, setRandomQuote] = useState("");
   const [selectedStyle, setSelectedStyle] = useState<HairstyleDetail | null>(null);
+  // 새로운 상태: 분석 결과와 추천 스타일
+  const [analysisResult, setAnalysisResult] = useState<FaceAnalysisResult | null>(null);
+  const [recommendedStyles, setRecommendedStyles] = useState<string[]>([]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -267,7 +270,7 @@ const App: React.FC = () => {
     }
   }, [processFile]);
 
-  // 분석 시작 (미리보기 확인 후)
+  // 통합 분석 및 이미지 생성 (1번 클릭으로 모든 처리)
   const handleStartAnalysis = useCallback(async () => {
     if (!originalImage) return;
 
@@ -281,25 +284,49 @@ const App: React.FC = () => {
       await handleOpenKeyDialog();
     }
 
-    setState(AppState.GENERATING);
+    setState(AppState.ANALYZING);
 
     try {
-      const result = await generateHairstyleGrid(originalImage);
+      // 1단계: 얼굴 분석 API 호출
+      const analysis = await analyzeFace(originalImage);
+      setAnalysisResult(analysis);
+
+      // 추천 스타일 이름 목록 추출 (9개로 보장)
+      const DEFAULT_STYLES = ["포마드컷", "리프컷", "댄디컷", "리젠트컷", "쉐도우펌", "아이비리그컷", "애즈펌", "슬릭백", "투블럭컷"];
+      let styleNames = analysis.recommendations.map(r => r.name);
+
+      // 9개 미만이면 기본 스타일로 채움
+      if (styleNames.length < 9) {
+        const remaining = DEFAULT_STYLES.filter(s => !styleNames.includes(s));
+        styleNames = [...styleNames, ...remaining].slice(0, 9);
+      } else {
+        styleNames = styleNames.slice(0, 9);
+      }
+
+      console.log('📋 최종 추천 스타일 (9개):', styleNames);
+      setRecommendedStyles(styleNames);
+
+      // 2단계: 3초 대기 후 자동으로 이미지 생성 시작
+      console.log('⏳ 3초 후 이미지 생성 자동 시작...');
+      setState(AppState.GENERATING);
+
+      // 이미지 생성 실행
+      const result = await generateHairstyleGrid(originalImage, styleNames);
       setResultImage(result);
 
-      // 히스토리에 저장 (비동기, 이미지 압축 포함)
+      // 히스토리에 저장
       try {
         await addHistoryItem({
           originalImage: originalImage,
           resultImage: result,
           faceAnalysis: {
-            faceShape: '계란형',
-            upperRatio: 33,
-            middleRatio: 34,
-            lowerRatio: 33,
-            features: ['균형잡힌 이목구비', '부드러운 턱선']
+            faceShape: analysis.faceShapeKo,
+            upperRatio: analysis.upperRatio,
+            middleRatio: analysis.middleRatio,
+            lowerRatio: analysis.lowerRatio,
+            features: analysis.features.map(f => f.nameKo)
           },
-          recommendedStyles: ['레이어드 컷', '에어펌', '시스루뱅'],
+          recommendedStyles: styleNames,
           liked: false
         });
       } catch (storageError) {
@@ -308,14 +335,14 @@ const App: React.FC = () => {
 
       setState(AppState.COMPLETED);
     } catch (error: any) {
-      console.error("Generation failed:", error);
+      console.error("Analysis/Generation failed:", error);
       const errorStr = typeof error === 'string' ? error : JSON.stringify(error);
 
       if (errorStr.includes("Requested entity was not found") || errorStr.includes("PERMISSION_DENIED") || errorStr.includes("403")) {
         setErrorMessage("이 기능을 사용하려면 유료 결제가 활성화된 API 키가 필요합니다.");
         await handleOpenKeyDialog();
       } else {
-        setErrorMessage(error.message || "이미지 생성 중 오류가 발생했습니다.");
+        setErrorMessage(error.message || "처리 중 오류가 발생했습니다.");
       }
       setState(AppState.ERROR);
     }
@@ -326,6 +353,9 @@ const App: React.FC = () => {
     setOriginalImage(null);
     setResultImage(null);
     setErrorMessage(null);
+    // 분석 결과 초기화
+    setAnalysisResult(null);
+    setRecommendedStyles([]);
   };
 
   // 영상 저장 핸들러
@@ -349,14 +379,16 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
-    // 1. 결과 화면
-    if (state === AppState.COMPLETED && resultImage) {
+    // 1. 통합 결과 화면 (분석 결과 + 3x3 그리드)
+    if (state === AppState.COMPLETED && resultImage && analysisResult) {
       return (
-        <ResultView
+        <AnalysisResultView
+          analysisResult={analysisResult}
           originalImage={originalImage!}
           resultImage={resultImage}
           onReset={handleReset}
           onStyleClick={handleStyleClick}
+          styles={recommendedStyles}
         />
       );
     }
@@ -661,7 +693,8 @@ const App: React.FC = () => {
       </nav>
 
       {/* 로딩 오버레이 */}
-      {state === AppState.GENERATING && <LoadingOverlay />}
+      {state === AppState.ANALYZING && <LoadingOverlay phase="analyzing" />}
+      {state === AppState.GENERATING && <LoadingOverlay phase="generating" />}
 
       {/* 업로드 방식 선택 모달 */}
       {showUploadModal && (
