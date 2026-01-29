@@ -68,6 +68,7 @@ const App: React.FC = () => {
   const streamRef = useRef<MediaStream | null>(null);
 
 
+
   // 컴포넌트 마운트 시 랜덤 명언 설정 및 프리미엄 상태 확인
   useEffect(() => {
     // 1. URL 쿼리 파라미터로 탭 전환 (외부 링크 지원)
@@ -75,7 +76,33 @@ const App: React.FC = () => {
     const tabParam = urlParams.get('tab');
     if (tabParam === 'history' || tabParam === 'saved' || tabParam === 'home') {
       setActiveTab(tabParam);
-      // URL 클린업 (선택 사항, 네비게이션 강조를 위해 유지해도 됨)
+    }
+
+    // [자동 복구 로직] 마지막 세션 확인
+    try {
+      const savedSession = sessionStorage.getItem('hairfit_last_session');
+      if (savedSession) {
+        const sessionData = JSON.parse(savedSession);
+        // 유효한 세션 데이터인지 확인
+        if (sessionData.originalImage && sessionData.resultImage && sessionData.analysisResult) {
+          console.log("🔄 이전 세션 복구 중...");
+          setOriginalImage(sessionData.originalImage);
+          setResultImage(sessionData.resultImage);
+          setAnalysisResult(sessionData.analysisResult);
+          setRecommendedStyles(sessionData.recommendedStyles || []);
+
+          // 이메일 정보가 있다면 복구
+          if (sessionData.userEmail) {
+            setUserEmail(sessionData.userEmail);
+          }
+
+          setState(AppState.COMPLETED);
+          return; // 세션 복구 시 아래 로직 스킵 가능
+        }
+      }
+    } catch (e) {
+      console.warn("세션 복구 실패:", e);
+      sessionStorage.removeItem('hairfit_last_session');
     }
 
     // 2. 랜덤 명언 설정
@@ -165,12 +192,17 @@ const App: React.FC = () => {
       setOriginalImage(base64Image);
       setErrorMessage(null);
       setState(AppState.PREVIEW); // 미리보기 단계로 이동
+
+      // 새 파일 로드 시 이전 세션 정보 삭제 (새 작업 시작)
+      sessionStorage.removeItem('hairfit_last_session');
     };
     reader.readAsDataURL(file);
   }, []);
 
   // 스캔 버튼 클릭 - 모달 열기
   const handleScanClick = useCallback(() => {
+    // 새 스캔 시작 시에도 세션 정리 질문을 할 수 있으나, 여기서는 일단 유지하거나 
+    // 파일 선택 시점에 삭제하도록 함.
     setShowUploadModal(true);
   }, []);
 
@@ -298,6 +330,9 @@ const App: React.FC = () => {
     setErrorMessage(null);
     stopCamera();
     setState(AppState.PREVIEW);
+
+    // 새 사진 촬영 시 이전 세션 삭제
+    sessionStorage.removeItem('hairfit_last_session');
   }, [stopCamera]);
 
   // 컴포넌트 언마운트 시 스트림 정리
@@ -398,6 +433,22 @@ const App: React.FC = () => {
       const result = await generateHairstyleGrid(originalImage, styleNames);
       setResultImage(result);
 
+      // [자동 복구용 세션 저장] 중요 데이터 백업
+      try {
+        const sessionData = {
+          originalImage: originalImage,
+          resultImage: result,
+          analysisResult: analysis,
+          recommendedStyles: styleNames,
+          userEmail: userEmail, // 사용자의 이메일 상태도 저장 (있는 경우)
+          timestamp: new Date().getTime()
+        };
+        sessionStorage.setItem('hairfit_last_session', JSON.stringify(sessionData));
+        console.log("💾 현재 세션 백업 완료");
+      } catch (e) {
+        console.warn("세션 백업 실패 (용량 부족 등):", e);
+      }
+
       // 히스토리에 저장
       try {
         await addHistoryItem({
@@ -427,23 +478,12 @@ const App: React.FC = () => {
       console.error("Analysis/Generation failed:", error);
 
       // [자동 환불 로직] 분석 실패 시 환불 처리
-      // 실제 API 환불은 백엔드 키가 필요하므로, 여기서는 사용자에게 "환불 안내"를 제공하고
-      // 로컬 권한을 유지하거나(재시도 기회), 혹은 환불 접수 창을 띄우는 것이 좋습니다.
-      // 현재는 "실패했으니 환불될 수 있도록 안내" 하는 메시지를 띄우는 것으로 구현합니다.
-
       const currentStatus = getPremiumStatus();
       if (currentStatus.isPremium && currentStatus.checkoutId) {
-        // checkoutId가 있다는 것은 유료 결제 건임
         setErrorMessage(`분석에 실패했습니다. (Error: ${error.message || 'Unknown'}) \n\n시스템 오류로 인해 분석이 완료되지 않았습니다.\n아래 [환불 요청] 버튼을 눌러주시면 즉시 전액 환불해 드립니다.`);
       } else {
         setErrorMessage(error.message || "처리 중 오류가 발생했습니다.");
       }
-
-      /* 
-         원래는 여기서 await refundOrder(currentStatus.checkoutId) 등을 호출해야 하나
-         Polar.sh의 클라이언트 사이드 환불은 보안상 제한될 수 있습니다. 
-         따라서 명시적인 환불 버튼/안내를 제공하는 것이 가장 안전합니다.
-      */
 
       const errorStr = typeof error === 'string' ? error : JSON.stringify(error);
 
@@ -453,15 +493,13 @@ const App: React.FC = () => {
       }
 
       // [중요] 분석 실패 시(API 키 오류 포함) 권한을 초기화해야
-      // 다음 클릭 시 결제 모달이 다시 뜨게 됩니다. (환불 정책과 일치)
       clearPremiumStatus();
       setIsPremium(false);
 
       setState(AppState.ERROR);
     }
-  }, [originalImage, isPremium]);
+  }, [originalImage, isPremium, userEmail]);
 
-  // [추가] 결제 후 자동 시작 감지용 Effect (handleStartAnalysis 정의 이후에 배치)
   // [추가] 결제 후 자동 시작 감지용 Effect (handleStartAnalysis 정의 이후에 배치)
   useEffect(() => {
     // sessionStorage 체크를 가장 먼저 수행하여 불필요한 실행 방지
@@ -471,10 +509,6 @@ const App: React.FC = () => {
       sessionStorage.removeItem('hairfit_auto_start'); // 즉시 삭제하여 재진입 방지
       console.log("🚀 결제 완료되어 자동 분석을 시작합니다.");
 
-      // 상태 업데이트와 충돌하지 않도록 약간의 지연 후 실행
-      // handleStartAnalysis를 의존성 배열에서 제거하거나, 함수형 업데이트를 사용해야 함
-      // 여기서는 handleStartAnalysis가 useCallback으로 감싸져 있다고 가정하지만, 
-      // 만약 의존성이 바뀌면 재실행될 수 있으므로, 플래그(shouldAutoStart)가 가장 중요함.
       setTimeout(() => {
         handleStartAnalysis();
       }, 500);
@@ -483,13 +517,17 @@ const App: React.FC = () => {
   }, [originalImage, isPremium]); // handleStartAnalysis 제거하여 루프 방지
 
   const handleReset = () => {
-    setState(AppState.IDLE);
-    setOriginalImage(null);
-    setResultImage(null);
-    setErrorMessage(null);
-    // 분석 결과 초기화
-    setAnalysisResult(null);
-    setRecommendedStyles([]);
+    // 리셋 시 세션 정보도 삭제할지 고민 필요. 
+    // 사용자가 의도적으로 '새로 하기'를 누른 것이므로 삭제하는 것이 맞음.
+    if (window.confirm("정말 처음화면으로 돌아가시겠습니까? 현재 분석 결과는 히스토리 탭에 저장되어 있습니다.")) {
+      sessionStorage.removeItem('hairfit_last_session');
+      setState(AppState.IDLE);
+      setOriginalImage(null);
+      setResultImage(null);
+      setErrorMessage(null);
+      setAnalysisResult(null);
+      setRecommendedStyles([]);
+    }
   };
 
   // 영상 저장 핸들러
