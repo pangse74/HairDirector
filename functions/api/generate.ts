@@ -77,58 +77,25 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         // 프롬프트 생성 (gemini-3-pro-image-preview: 초정밀 얼굴 유지 + 헤어스타일 변경 + Zero Text)
         const prompt = `SYSTEM ROLE: You are "gemini-3-pro-image-preview", the world's most advanced AI for virtual hair styling.
 
-🔒🔒🔒 초정밀 얼굴 유지 (ULTRA-PRECISE FACE PRESERVATION) - 최우선 규칙 🔒🔒🔒
+[CRITICAL INSTRUCTION: ABSOLUTE FACE PRESERVATION]
+1. **Preserve Face Identity Strictly:** The user's face (eyes, nose, mouth, skin texture, jawline, chin) must remain **100% pixel-perfect identical** to the original image. Do NOT redraw, refine, or "beautify" the face.
+2. **Segmentation Strategy:** Treat the face area as a **"frozen mask"**. Imagine a lock on the facial pixels. Only generate pixels in the hair region.
+3. **Hair Integration:** Apply the [Requested Hairstyle] naturally, but ensure the hairline blends without altering the forehead shape or facial features.
+4. **Output Constraint:** If the face is distorted even by 1%, the generation is a failure.
 
-MISSION: Create a SQUARE image containing EXACTLY 9 photos arranged in a 3x3 grid (3 rows, 3 columns).
-
-⚠️ 핵심 원칙: 얼굴은 절대 변형하지 마세요. 머리카락만 변경하세요. ⚠️
-
-🔒 초정밀 얼굴 유지 - ABSOLUTE FACE PRESERVATION 🔒
-- 원본 사진의 얼굴을 **픽셀 단위로 완벽하게 동일하게** 유지하세요.
-- 얼굴을 새로 생성하거나 재해석하지 마세요. **원본 얼굴을 그대로 복사**하세요.
-- The person's face must be **PIXEL-PERFECT IDENTICAL** in ALL 9 cells.
-- **COPY the exact face** from the original photo. Do NOT regenerate or reimagine.
-- PRESERVE EXACTLY:
-  • Eye shape, eye size, eye position, eye color, eyelids, eyebrows (눈 모양, 크기, 위치, 색상, 눈썹)
-  • Nose shape, nose size, nostril shape (코 모양, 크기)
-  • Lip shape, lip thickness, mouth width, teeth (입술 모양, 두께, 치아)
-  • Face shape, jawline, chin, cheekbones (얼굴형, 턱선, 광대뼈)
-  • Skin tone, skin texture, freckles, moles, wrinkles (피부톤, 피부결, 주근깨, 점, 주름)
-  • Ear shape and position (귀 모양과 위치)
-  • Facial expression (must be same in all 9 cells) (표정 동일)
-- **오직 머리카락만 변경** - 얼굴은 절대 건드리지 마세요.
-- **ONLY MODIFY THE HAIR** - nothing else changes.
-- Think of it as: "Same photo, different wig" - the face underneath is untouched.
-- 얼굴이 조금이라도 달라지면 **완전한 실패**입니다.
-- If the face looks even slightly different, the generation is a COMPLETE FAILURE.
-
-⚠️ CRITICAL GRID REQUIREMENTS ⚠️
-- OUTPUT MUST BE A **SQUARE IMAGE** (1:1 aspect ratio)
-- EXACTLY **3 ROWS** and **3 COLUMNS** = 9 cells total
-- Each cell shows the SAME EXACT PERSON with a DIFFERENT hairstyle
-- All 9 cells must be EQUAL SIZE
-- DO NOT create 2x5, 5x2, 2x4, 4x2 or any other layout. ONLY 3x3.
-
-⛔️⛔️⛔️ ABSOLUTE ZERO TEXT - MOST CRITICAL RULE ⛔️⛔️⛔️
-- **NO TEXT WHATSOEVER** - This is NON-NEGOTIABLE.
-- NO letters (English, Korean, Chinese, Japanese, or ANY language)
-- NO numbers, NO symbols, NO characters of any kind
-- NO watermarks, NO signatures, NO logos, NO brand names
-- NO labels, NO captions, NO style names, NO titles
-- NO text ON the face, ON the hair, ON the background, or ANYWHERE
-- DO NOT write hairstyle names on the image
-- DO NOT add any overlay text or graphics
-- The image must be **PURE PHOTOGRAPHY** - as if taken by a camera
-- Think: "Raw photo from a professional photoshoot" - no post-production text
-- **IF ANY TEXT APPEARS ANYWHERE IN THE IMAGE = COMPLETE FAILURE**
-- Negative prompt: text, letters, words, writing, typography, caption, label, watermark, signature, logo, number, character, font, headline, title, subtitle
-
-GRID LAYOUT (3 rows × 3 columns):
+[GRID LAYOUT REQUIREMENT]
+- OUTPUT: A single SQUARE image (1:1 ratio) containing EXACTLY a 3x3 grid (9 cells).
+- CONTENTS: The SAME person with different hairstyles in each cell.
+- GRID:
 Row 1: [${STYLES[0]}] [${STYLES[1]}] [${STYLES[2]}]
 Row 2: [${STYLES[3]}] [${STYLES[4]}] [${STYLES[5]}]
 Row 3: [${STYLES[6]}] [${STYLES[7]}] [${STYLES[8]}]
 
-TECHNIQUE: Use inpainting based method. Keep facial features strictly unchanged.`;
+[NEGATIVE PROMPT]
+face distortion, changing facial features, makeup changes, skin smoothing, redrawing face, identity loss, morphing, text, letters, words, writing, typography, caption, label, watermark, signature, logo, number, character.
+
+[ZERO TEXT RULE]
+- NO TEXT WHATSOEVER. Pure photography only.`;
 
         // Gemini API 호출 (Nano Banana Pro = gemini-3-pro-image-preview)
         const geminiResponse = await fetch(
