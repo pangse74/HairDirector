@@ -403,6 +403,10 @@ const App: React.FC = () => {
       await handleOpenKeyDialog();
     }
 
+    // [중요] 상태 초기화: 이전 결과 잔여 데이터로 인한 오류 방지
+    setResultImage(null);
+    setErrorMessage(null);
+
     setState(AppState.ANALYZING);
 
     try {
