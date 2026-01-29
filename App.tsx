@@ -917,26 +917,51 @@ const App: React.FC = () => {
       )}
 
       {/* 하단 네비게이션 */}
-      <nav className="fixed bottom-0 left-0 right-0 glass-card-dark border-t border-white/5 z-40">
-        <div className="flex items-center justify-around py-4 max-w-md mx-auto">
-          <NavItem
-            icon="fa-home"
-            label="홈"
-            active={activeTab === 'home' && state === AppState.IDLE}
+      <nav className="fixed bottom-0 left-0 right-0 glass-card-dark border-t border-white/5 z-40 pb-safe">
+        <div className="flex items-center justify-around h-16 max-w-md mx-auto px-2">
+          {/* 홈 버튼 */}
+          <button
             onClick={() => handleNavClick('home')}
-          />
-          <NavItem
-            icon="fa-clock-rotate-left"
-            label="히스토리"
-            active={activeTab === 'history' && state === AppState.IDLE}
+            className={`flex flex-col items-center justify-center w-16 h-full gap-1 transition-colors ${activeTab === 'home' || activeTab === 'report' ? 'text-gray-500' : 'text-gray-500'} ${activeTab === 'home' ? '!text-violet-400' : ''}`}
+          >
+            <i className={`fas fa-home text-xl ${activeTab === 'home' ? 'animate-bounce-small' : ''}`}></i>
+            <span className="text-[10px] font-medium">홈</span>
+          </button>
+
+          {/* 전체 기록 버튼 */}
+          <button
             onClick={() => handleNavClick('history')}
-          />
-          <NavItem
-            icon="fa-bookmark"
-            label="저장됨"
-            active={activeTab === 'saved' && state === AppState.IDLE}
+            className={`flex flex-col items-center justify-center w-16 h-full gap-1 transition-colors ${activeTab === 'history' ? 'text-violet-400' : 'text-gray-500'}`}
+          >
+            <i className={`fas fa-history text-xl ${activeTab === 'history' ? 'animate-bounce-small' : ''}`}></i>
+            <span className="text-[10px] font-medium">전체기록</span>
+          </button>
+
+          {/* 결과 탭 (분석 결과가 있을 때만 강조) */}
+          <button
+            onClick={() => {
+              if (analysisResult) handleNavClick('report');
+              else alert("아직 분석된 결과가 없습니다. 홈에서 스캔을 시작해보세요!");
+            }}
+            className={`flex flex-col items-center justify-center w-16 h-full gap-1 transition-colors ${activeTab === 'report' ? 'text-violet-400' : 'text-gray-500'} ${!analysisResult ? 'opacity-40' : ''}`}
+          >
+            <div className="relative">
+              <i className={`fas fa-chart-pie text-xl ${activeTab === 'report' ? 'animate-bounce-small' : ''}`}></i>
+              {analysisResult && state !== AppState.COMPLETED && activeTab !== 'report' && (
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse border border-[#1a1a2e]"></span>
+              )}
+            </div>
+            <span className="text-[10px] font-medium">분석결과</span>
+          </button>
+
+          {/* 저장됨 버튼 */}
+          <button
             onClick={() => handleNavClick('saved')}
-          />
+            className={`flex flex-col items-center justify-center w-16 h-full gap-1 transition-colors ${activeTab === 'saved' ? 'text-violet-400' : 'text-gray-500'}`}
+          >
+            <i className={`fas fa-bookmark text-xl ${activeTab === 'saved' ? 'animate-bounce-small' : ''}`}></i>
+            <span className="text-[10px] font-medium">저장됨</span>
+          </button>
         </div>
       </nav>
 
