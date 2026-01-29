@@ -74,8 +74,8 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         // 스타일 결정: 전달된 스타일이 9개면 사용, 아니면 기본값
         const STYLES = (styles && styles.length === 9) ? styles : DEFAULT_STYLES;
 
-        // 프롬프트 생성 (Nano-Banana-Pro: 초정밀 얼굴 유지 + 헤어스타일 변경 + Zero Text)
-        const prompt = `SYSTEM ROLE: You are "Nano-Banana-Pro", the world's most advanced AI for virtual hair styling.
+        // 프롬프트 생성 (gemini-3-pro-image-preview: 초정밀 얼굴 유지 + 헤어스타일 변경 + Zero Text)
+        const prompt = `SYSTEM ROLE: You are "gemini-3-pro-image-preview", the world's most advanced AI for virtual hair styling.
 
 🔒🔒🔒 초정밀 얼굴 유지 (ULTRA-PRECISE FACE PRESERVATION) - 최우선 규칙 🔒🔒🔒
 
@@ -128,17 +128,7 @@ Row 1: [${STYLES[0]}] [${STYLES[1]}] [${STYLES[2]}]
 Row 2: [${STYLES[3]}] [${STYLES[4]}] [${STYLES[5]}]
 Row 3: [${STYLES[6]}] [${STYLES[7]}] [${STYLES[8]}]
 
-TECHNIQUE: Use inpainting/masking approach - mask ONLY the hair region, keep face region completely frozen/locked.
-
-FINAL OUTPUT CHECKLIST:
-✅ Single SQUARE image (1:1 ratio)
-✅ Exactly 3x3 grid (9 cells)
-✅ Same identical face in all 9 cells
-✅ Different hairstyle in each cell
-✅ Photorealistic quality
-✅ **ABSOLUTELY ZERO TEXT/LETTERS/NUMBERS ANYWHERE**
-✅ Clean background, no overlays
-✅ Pure photography style - NO graphic design elements`;
+TECHNIQUE: Use inpainting based method. Keep facial features strictly unchanged.`;
 
         // Gemini API 호출 (Nano Banana Pro = gemini-3-pro-image-preview)
         const geminiResponse = await fetch(
