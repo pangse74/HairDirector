@@ -9,6 +9,9 @@ import { AppState, FaceAnalysisResult } from './types';
 import { HAIRSTYLE_DETAILS, HairstyleDetail } from './services/hairstyleData';
 import { StyleDetailPanel } from './components/StyleDetailPanel';
 import { VideoConsultingModal } from './components/VideoConsultingModal';
+import { Footer } from './components/Footer';
+import { PaymentModal } from './components/PaymentModal';
+import { getPremiumStatus, savePremiumStatus, checkPaymentCallback } from './services/polarService';
 
 
 const QUOTES = [
@@ -51,14 +54,30 @@ const App: React.FC = () => {
   const [analysisResult, setAnalysisResult] = useState<FaceAnalysisResult | null>(null);
   const [recommendedStyles, setRecommendedStyles] = useState<string[]>([]);
   const [selectedVideo, setSelectedVideo] = useState<{ videoId: string; title: string } | null>(null);
+  const [isPremium, setIsPremium] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  // 컴포넌트 마운트 시 랜덤 명언 설정
+  // 컴포넌트 마운트 시 랜덤 명언 설정 및 프리미엄 상태 확인
   useEffect(() => {
     const randomIndex = Math.floor(Math.random() * QUOTES.length);
     setRandomQuote(QUOTES[randomIndex]);
+
+    // 프리미엄 상태 확인
+    const premiumStatus = getPremiumStatus();
+    setIsPremium(premiumStatus.isPremium);
+
+    // 결제 콜백 확인
+    const paymentResult = checkPaymentCallback();
+    if (paymentResult === 'success') {
+      savePremiumStatus();
+      setIsPremium(true);
+      alert('결제가 완료되었습니다.');
+    } else if (paymentResult === 'cancel') {
+      alert('결제가 취소되었습니다.');
+    }
   }, []);
 
   // 스타일 클릭 핸들러
@@ -281,6 +300,12 @@ const App: React.FC = () => {
     const apiKeyEnv = (process as any).env?.API_KEY || (process as any).env?.GEMINI_API_KEY;
     const hasApiKeyEnv = !!(apiKeyEnv && apiKeyEnv.trim().length > 0);
 
+    // [결제 체크 로직] 프리미엄 유저가 아니면 결제 모달을 띄우고 분석 중단
+    if (!isPremium) {
+      setShowPaymentModal(true);
+      return;
+    }
+
     // API 키가 없어도 디버그 모드로 진행
     if (!hasKey && hasApiKeyEnv) {
       await handleOpenKeyDialog();
@@ -348,7 +373,7 @@ const App: React.FC = () => {
       }
       setState(AppState.ERROR);
     }
-  }, [originalImage]);
+  }, [originalImage, isPremium]);
 
   const handleReset = () => {
     setState(AppState.IDLE);
@@ -488,7 +513,7 @@ const App: React.FC = () => {
             <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center">
               <i className="fas fa-robot text-white text-sm"></i>
             </div>
-            <span className="text-white font-bold text-lg">헤어핏</span>
+            <span className="text-white font-bold text-lg">헤어디렉터</span>
           </div>
           <button
             onClick={handleOpenKeyDialog}
@@ -651,6 +676,9 @@ const App: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* 푸터 */}
+        <Footer />
       </>
     );
   };
@@ -676,6 +704,22 @@ const App: React.FC = () => {
           videoId={selectedVideo.videoId}
           title={selectedVideo.title}
           onClose={() => setSelectedVideo(null)}
+          isPremium={isPremium}
+          onPaymentClick={() => {
+            setSelectedVideo(null);
+            setShowPaymentModal(true);
+          }}
+        />
+      )}
+
+      {/* 결제 모달 */}
+      {showPaymentModal && (
+        <PaymentModal
+          onClose={() => setShowPaymentModal(false)}
+          onSuccess={() => {
+            setIsPremium(true);
+            setShowPaymentModal(false);
+          }}
         />
       )}
 

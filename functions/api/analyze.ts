@@ -29,7 +29,7 @@ const corsHeaders = {
 };
 
 // 분석 프롬프트 (강화된 맞춤형 분석)
-const ANALYSIS_PROMPT = `You are an expert AI hairstylist and face analyst with 20+ years of experience. Analyze the face in this image and provide PERSONALIZED styling recommendations.
+const ANALYSIS_PROMPT = `You are an AI styling assistant that analyzes facial features and recommends suitable hairstyles. Analyze the face in this image and provide PERSONALIZED styling recommendations.
 
 IMPORTANT: Return ONLY valid JSON, no other text. The response must be parseable JSON.
 
