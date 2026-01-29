@@ -104,7 +104,7 @@ export const addHistoryItem = async (item: Omit<HistoryItem, 'id' | 'date'>): Pr
         const originalThumbnail = await createThumbnail(item.originalImage);
         const resultThumbnail = await createThumbnail(item.resultImage);
 
-        const history = getHistory();
+        let history = getHistory(); // const에서 let으로 변경하여 재할당 가능하게 함
         const newItem: HistoryItem = {
             ...item,
             originalImage: highQualityOriginal,
@@ -118,18 +118,36 @@ export const addHistoryItem = async (item: Omit<HistoryItem, 'id' | 'date'>): Pr
         history.unshift(newItem);
 
         // 최대 개수 제한 (고해상도라 개수 줄임)
-        const limitedHistory = history.slice(0, MAX_HISTORY_ITEMS);
+        let limitedHistory = history.slice(0, MAX_HISTORY_ITEMS);
 
-        try {
-            localStorage.setItem(HISTORY_KEY, JSON.stringify(limitedHistory));
-        } catch (e) {
-            // 용량 초과시 오래된 항목 삭제
-            console.warn('Storage quota exceeded, reducing history...');
-            const reducedHistory = limitedHistory.slice(0, 3);
-            localStorage.setItem(HISTORY_KEY, JSON.stringify(reducedHistory));
+        // [FIFO] 용량 확보를 위한 반복 저장 시도
+        // 최대 5번까지 오래된 항목을 하나씩 지우며 저장을 시도함
+        for (let i = 0; i < 5; i++) {
+            try {
+                localStorage.setItem(HISTORY_KEY, JSON.stringify(limitedHistory));
+                // 저장 성공 시 반복문 탈출
+                return newItem;
+            } catch (e) {
+                if (e instanceof DOMException && (e.name === 'QuotaExceededError' || e.code === 22)) {
+                    console.warn(`⚠️ 저장 용량 부족 (시도 ${i + 1}/5). 가장 오래된 기록을 삭제하고 다시 시도합니다.`);
+
+                    // 현재 저장하려는 목록에서 가장 오래된 것(마지막) 삭제 (단, 1개는 유지)
+                    if (limitedHistory.length > 1) {
+                        limitedHistory.pop();
+                    } else {
+                        // 1개도 저장이 안 되면 포기 (매우 큰 이미지 등)
+                        console.error('❌ 용량 부족으로 히스토리 저장 실패 (단일 항목 용량 초과)');
+                        throw e;
+                    }
+                } else {
+                    // 용량 문제가 아닌 다른 에러면 즉시 throw
+                    throw e;
+                }
+            }
         }
 
         return newItem;
+
     } catch (error) {
         console.error('Failed to add history item:', error);
         throw error;
