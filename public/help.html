@@ -446,7 +446,9 @@
 
                 <div class="contact-info">
                     <i class="fas fa-envelope"></i>
-                    <span>이메일: <a href="mailto:1974mds@naver.com">1974mds@naver.com</a></span>
+                    <span>이메일: <span style="cursor:pointer; color:#a78bfa;"
+                            onclick="navigator.clipboard.writeText('1974mds@naver.com').then(() => alert('이메일 주소가 복사되었습니다.'))">1974mds@naver.com
+                            (클릭하여 복사)</span></span>
                 </div>
 
                 <div class="contact-info">
@@ -454,10 +456,12 @@
                     <span>응답 시간: 영업일 기준 24시간 이내</span>
                 </div>
 
-                <a href="mailto:1974mds@naver.com?subject=[헤어디렉터] 문의사항" class="btn btn-contact">
-                    <i class="fas fa-paper-plane"></i>
-                    문의 이메일 보내기
-                </a>
+                <button
+                    onclick="navigator.clipboard.writeText('1974mds@naver.com').then(() => alert('이메일 주소가 복사되었습니다.'))"
+                    class="btn btn-contact">
+                    <i class="fas fa-copy"></i>
+                    문의 이메일 주소 복사
+                </button>
             </div>
         </section>
 
