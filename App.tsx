@@ -42,7 +42,7 @@ const App: React.FC = () => {
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [resultImage, setResultImage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'home' | 'history' | 'saved' | 'report'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'saved' | 'report'>('home');
   const [isDragging, setIsDragging] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
@@ -453,25 +453,7 @@ const App: React.FC = () => {
         console.warn("세션 백업 실패 (용량 부족 등):", e);
       }
 
-      // 히스토리에 저장
-      try {
-        await addHistoryItem({
-          originalImage: originalImage,
-          resultImage: result,
-          faceAnalysis: {
-            faceShape: analysis.faceShapeKo,
-            upperRatio: analysis.upperRatio,
-            middleRatio: analysis.middleRatio,
-            lowerRatio: analysis.lowerRatio,
-            features: analysis.features.map(f => f.nameKo)
-          },
-          fullAnalysisResult: analysis,  // 전체 분석 결과 저장
-          recommendedStyles: styleNames,
-          liked: false
-        });
-      } catch (storageError) {
-        console.warn('히스토리 저장 실패:', storageError);
-      }
+
 
       // [1회성 결제권 소비] 분석 완료 후 프리미엄 권한 해제하여 재분석 시 다시 결제하도록 함
       clearPremiumStatus();
@@ -846,12 +828,7 @@ const App: React.FC = () => {
             </div>
           )}
 
-          {/* 히스토리 탭 */}
-          {activeTab === 'history' && (
-            <div className="w-full mt-6">
-              <HistoryView onSelectItem={(item) => setSelectedHistoryItem(item)} />
-            </div>
-          )}
+
 
           {/* 저장됨 탭 */}
           {activeTab === 'saved' && (
@@ -932,14 +909,7 @@ const App: React.FC = () => {
             <span className="text-[10px] font-medium">홈</span>
           </button>
 
-          {/* 전체 기록 버튼 */}
-          <button
-            onClick={() => handleNavClick('history')}
-            className={`flex flex-col items-center justify-center w-16 h-full gap-1 transition-colors ${activeTab === 'history' ? 'text-violet-400' : 'text-gray-500'}`}
-          >
-            <i className={`fas fa-history text-xl ${activeTab === 'history' ? 'animate-bounce-small' : ''}`}></i>
-            <span className="text-[10px] font-medium">전체기록</span>
-          </button>
+
 
           {/* 결과 탭 (분석 결과가 있을 때만 강조) */}
           <button
