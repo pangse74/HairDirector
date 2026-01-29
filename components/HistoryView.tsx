@@ -73,7 +73,11 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onSelectItem }) => {
                 return;
             }
 
-            const fileName = `헤어핏_스타일_${new Date().toISOString().split('T')[0]}_${Date.now()}`;
+            const fileName = `헤어디렉터_스타일_${new Date().toISOString().split('T')[0]}_${Date.now()}`;
+
+            // ... (중략)
+
+            const downloadFileName = `${fileName}.png`;
 
             // Base64 이미지인 경우 Blob으로 변환하여 다운로드
             if (imageUrl.startsWith('data:')) {
@@ -82,7 +86,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onSelectItem }) => {
                     const url = window.URL.createObjectURL(blob);
                     const link = document.createElement('a');
                     link.href = url;
-                    link.download = `${fileName}.png`;
+                    link.download = downloadFileName;
                     link.style.display = 'none';
                     document.body.appendChild(link);
                     link.click();
@@ -99,7 +103,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onSelectItem }) => {
                     // 폴백: 직접 a 태그로 다운로드
                     const link = document.createElement('a');
                     link.href = imageUrl;
-                    link.download = `${fileName}.png`;
+                    link.download = downloadFileName;
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
@@ -116,7 +120,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onSelectItem }) => {
                 const url = window.URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = url;
-                link.download = `${fileName}.jpg`;
+                link.download = downloadFileName;
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
@@ -248,7 +252,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onSelectItem }) => {
                 <div className="grid grid-cols-2 gap-3">
                     <a
                         href={selectedItem.resultImage}
-                        download={`헤어핏_스타일_${new Date().toISOString().split('T')[0]}.png`}
+                        download={`헤어디렉터_스타일_${new Date().toISOString().split('T')[0]}.png`}
                         className="p-4 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2"
                     >
                         <i className="fas fa-download"></i>

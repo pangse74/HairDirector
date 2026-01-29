@@ -161,7 +161,7 @@ export const AnalysisResultView: React.FC<Props> = ({
           // 1. 원본 3x3 그리드 저장 (텍스트 없음)
           const link1 = document.createElement('a');
           link1.href = resultImage;
-          link1.download = `헤어핏_원본그리드_${timestamp}.png`;
+          link1.download = `헤어디렉터_원본그리드_${timestamp}.png`;
           document.body.appendChild(link1);
           link1.click();
           document.body.removeChild(link1);
@@ -178,7 +178,7 @@ export const AnalysisResultView: React.FC<Props> = ({
             });
             const link2 = document.createElement('a');
             link2.href = canvas.toDataURL('image/png');
-            link2.download = `헤어핏_스타일그리드_${timestamp}.png`;
+            link2.download = `헤어디렉터_스타일그리드_${timestamp}.png`;
             document.body.appendChild(link2);
             link2.click();
             document.body.removeChild(link2);
@@ -196,7 +196,7 @@ export const AnalysisResultView: React.FC<Props> = ({
             });
             const link3 = document.createElement('a');
             link3.href = canvas.toDataURL('image/png');
-            link3.download = `헤어핏_분석카드_${timestamp}.png`;
+            link3.download = `헤어디렉터_분석카드_${timestamp}.png`;
             document.body.appendChild(link3);
             link3.click();
             document.body.removeChild(link3);
@@ -216,7 +216,7 @@ export const AnalysisResultView: React.FC<Props> = ({
             });
             const link4 = document.createElement('a');
             link4.href = canvas.toDataURL('image/png');
-            link4.download = `헤어핏_분석리포트_${timestamp}.png`;
+            link4.download = `헤어디렉터_분석리포트_${timestamp}.png`;
             document.body.appendChild(link4);
             link4.click();
             document.body.removeChild(link4);
@@ -243,10 +243,36 @@ export const AnalysisResultView: React.FC<Props> = ({
 
     const link = document.createElement('a');
     link.href = resultImage;
-    link.download = `헤어핏_AI추천스타일_${timestamp}.png`;
+    link.download = `헤어디렉터_AI추천스타일_${timestamp}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  // [추가] 리포트 텍스트 복사 핸들러
+  const handleCopyReport = async () => {
+    const reportText = `[헤어디렉터 AI 분석 리포트]
+--------------------------------
+👤 얼굴형: ${faceShapeKo} (${skinToneKo})
+📏 비율: 상 ${upperRatio}% : 중 ${middleRatio}% : 하 ${lowerRatio}%
+
+✨ 추천 스타일 BEST 5:
+${STYLES.slice(0, 5).map((s, i) => `${i + 1}. ${s}`).join('\n')}
+
+💡 맞춤 팁:
+${stylingTips.slice(0, 3).map(t => `- ${t}`).join('\n')}
+
+--------------------------------
+나에게 딱 맞는 인생 헤어스타일 찾기
+👉 https://hairdirector.site`;
+
+    try {
+      await navigator.clipboard.writeText(reportText);
+      alert('리포트 내용이 복사되었습니다!\n메시지나 카톡에 붙여넣기 해보세요.');
+    } catch (err) {
+      console.error('Failed to copy report:', err);
+      alert('복사에 실패했습니다.');
+    }
   };
 
   return (
@@ -421,8 +447,8 @@ export const AnalysisResultView: React.FC<Props> = ({
                       onStyleClick?.(STYLE_ID_MAP[styleName] || 'default');
                     }}
                     className={`p-3 rounded-xl border text-center transition-all ${selectedStyle === index
-                        ? 'bg-violet-600/30 border-violet-500'
-                        : 'bg-white/5 border-white/10 hover:bg-white/10'
+                      ? 'bg-violet-600/30 border-violet-500'
+                      : 'bg-white/5 border-white/10 hover:bg-white/10'
                       }`}
                   >
                     <span className="text-violet-400 font-bold text-lg">{index + 1}</span>
@@ -500,7 +526,7 @@ export const AnalysisResultView: React.FC<Props> = ({
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
                     <i className="fas fa-robot text-white text-sm"></i>
                   </div>
-                  <span className="text-white font-bold">헤어핏 AI</span>
+                  <span className="text-white font-bold">헤어디렉터 AI</span>
                 </div>
                 <span className="text-gray-500 text-xs">AI 얼굴 분석 리포트</span>
               </div>
@@ -543,11 +569,10 @@ export const AnalysisResultView: React.FC<Props> = ({
                 {features.slice(0, 4).map((f, i) => (
                   <span
                     key={i}
-                    className={`px-2 py-1 rounded-full text-[10px] font-medium ${
-                      f.impact === 'positive' ? 'bg-green-500/20 text-green-400' :
+                    className={`px-2 py-1 rounded-full text-[10px] font-medium ${f.impact === 'positive' ? 'bg-green-500/20 text-green-400' :
                       f.impact === 'consideration' ? 'bg-yellow-500/20 text-yellow-400' :
-                      'bg-gray-500/20 text-gray-400'
-                    }`}
+                        'bg-gray-500/20 text-gray-400'
+                      }`}
                   >
                     {f.nameKo}
                   </span>
@@ -573,13 +598,22 @@ export const AnalysisResultView: React.FC<Props> = ({
               {/* 푸터 */}
               <div className="mt-5 pt-4 border-t border-white/10 flex items-center justify-between">
                 <span className="text-gray-500 text-[10px]">Powered by Gemini AI</span>
-                <span className="text-violet-400 text-[10px] font-bold">hairfit.ai</span>
+                <span className="text-violet-400 text-[10px] font-bold">Hair Director</span>
               </div>
             </div>
           )}
 
           {/* 하단 버튼 */}
           <div className="pt-4 space-y-3">
+            {/* [추가] 텍스트 복사 버튼 */}
+            <button
+              onClick={handleCopyReport}
+              className="w-full py-3 rounded-2xl bg-gradient-to-r from-gray-700 to-gray-600 text-white font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-all border border-white/10"
+            >
+              <i className="fas fa-copy"></i>
+              리포트 텍스트 복사 (공유용)
+            </button>
+
             {resultImage && (
               <button
                 onClick={handleDownload}

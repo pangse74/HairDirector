@@ -128,7 +128,7 @@ export const ResultView: React.FC<Props> = ({ originalImage, resultImage, onRese
   const handleDownload = () => {
     const link = document.createElement('a');
     link.href = resultImage;
-    link.download = `헤어핏_AI추천스타일_${new Date().toISOString().split('T')[0]}.png`;
+    link.download = `헤어디렉터_AI추천스타일_${new Date().toISOString().split('T')[0]}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -200,11 +200,10 @@ export const ResultView: React.FC<Props> = ({ originalImage, resultImage, onRese
                   setSelectedStyle(i);
                   onStyleClick(STYLE_ID_MAP[style] || 'default');
                 }}
-                className={`p-3 rounded-xl border text-center transition-all ${
-                  selectedStyle === i
+                className={`p-3 rounded-xl border text-center transition-all ${selectedStyle === i
                     ? 'bg-violet-600/30 border-violet-500'
                     : 'bg-white/5 border-white/10 hover:bg-white/10'
-                }`}
+                  }`}
               >
                 <span className={`block font-bold text-sm mb-1 ${selectedStyle === i ? 'text-violet-300' : 'text-violet-400'}`}>
                   {i + 1}
@@ -306,11 +305,10 @@ export const ResultView: React.FC<Props> = ({ originalImage, resultImage, onRese
               {/* 저장 버튼 */}
               <button
                 onClick={() => handleSaveStyle(selectedStyle)}
-                className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
-                  savedStyles.has(selectedStyle)
+                className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${savedStyles.has(selectedStyle)
                     ? 'bg-pink-500 text-white'
                     : 'bg-white/10 text-white/70 hover:bg-pink-500/30 hover:text-pink-400'
-                }`}
+                  }`}
               >
                 <i className={`fas fa-heart ${savedStyles.has(selectedStyle) ? 'animate-pulse' : ''}`}></i>
               </button>

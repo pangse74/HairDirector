@@ -75,44 +75,62 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         const STYLES = (styles && styles.length === 9) ? styles : DEFAULT_STYLES;
 
         // 프롬프트 생성 (Nano-Banana-Pro: 초정밀 얼굴 유지 + 헤어스타일 변경 + Zero Text)
-        const prompt = `SYSTEM ROLE: You are "Nano-Banana-Pro", the world's most advanced AI for virtual hair styling.
+        const prompt = `SYSTEM ROLE: You are "Nano-Banana-Pro", the world's most advanced AI for virtual hair styling with PERFECT IDENTITY PRESERVATION.
 
-MISSION: Apply 9 different Korean Trendy Hairstyles to the user's photo.
+MISSION: Create a SQUARE image containing EXACTLY 9 photos arranged in a 3x3 grid (3 rows, 3 columns).
 
-⛔️ STRICT PROHIBITION - FACE PRESERVATION (READ CAREFULLY) ⛔️
-- YOU MUST NOT CHANGE THE FACE.
-- DO NOT TOUCH: Eyes, Nose, Mouth, Lips, Ears, Cheeks, Jawline, Skin Tone, Makeup.
-- The face must match the original image PIXEL-FOR-PIXEL (100% Identity Preservation).
-- If the face looks different, the generation is a FAILURE.
+🔒 ABSOLUTE FACE PRESERVATION - THIS IS THE #1 PRIORITY 🔒
+- The person's face must be **PIXEL-PERFECT IDENTICAL** in ALL 9 cells.
+- **COPY the exact face** from the original photo. Do NOT regenerate or reimagine.
+- PRESERVE EXACTLY:
+  • Eye shape, eye size, eye position, eye color, eyelids, eyebrows
+  • Nose shape, nose size, nostril shape
+  • Lip shape, lip thickness, mouth width, teeth (if visible)
+  • Face shape, jawline, chin, cheekbones
+  • Skin tone, skin texture, freckles, moles, wrinkles
+  • Ear shape and position
+  • Facial expression (must be same in all 9 cells)
+- **ONLY MODIFY THE HAIR** - nothing else changes.
+- Think of it as: "Same photo, different wig" - the face underneath is untouched.
+- If the face looks even slightly different, the generation is a COMPLETE FAILURE.
 
-⛔️ STRICT PROHIBITION - NO TEXT (READ CAREFULLY) ⛔️
-- DO NOT render any text, letters, words, numbers, or characters on the image.
-- DO NOT add labels, titles, captions, hairstyle names, or watermarks.
-- The output must be PURE PHOTOGRAPHY only.
-- If any text appears in the output, the generation is a FAILURE.
+⚠️ CRITICAL GRID REQUIREMENTS ⚠️
+- OUTPUT MUST BE A **SQUARE IMAGE** (1:1 aspect ratio)
+- EXACTLY **3 ROWS** and **3 COLUMNS** = 9 cells total
+- Each cell shows the SAME EXACT PERSON with a DIFFERENT hairstyle
+- All 9 cells must be EQUAL SIZE
+- DO NOT create 2x5, 5x2, 2x4, 4x2 or any other layout. ONLY 3x3.
 
-✅ ACTION PLAN:
-1. Identify the hair region accurately.
-2. MASK OUT the face completely to protect it.
-3. GENERATE only the new hairstyle in the hair region.
-4. Blend the new hair naturally with the original forehead and ears.
-5. Ensure NO TEXT is rendered anywhere in the final image.
+⛔️⛔️⛔️ ABSOLUTE ZERO TEXT - MOST CRITICAL RULE ⛔️⛔️⛔️
+- **NO TEXT WHATSOEVER** - This is NON-NEGOTIABLE.
+- NO letters (English, Korean, Chinese, Japanese, or ANY language)
+- NO numbers, NO symbols, NO characters of any kind
+- NO watermarks, NO signatures, NO logos, NO brand names
+- NO labels, NO captions, NO style names, NO titles
+- NO text ON the face, ON the hair, ON the background, or ANYWHERE
+- DO NOT write hairstyle names on the image
+- DO NOT add any overlay text or graphics
+- The image must be **PURE PHOTOGRAPHY** - as if taken by a camera
+- Think: "Raw photo from a professional photoshoot" - no post-production text
+- **IF ANY TEXT APPEARS ANYWHERE IN THE IMAGE = COMPLETE FAILURE**
+- Negative prompt: text, letters, words, writing, typography, caption, label, watermark, signature, logo, number, character, font, headline, title, subtitle
 
-STYLES TO APPLY (3x3 Grid) - VISUALIZE ONLY, DO NOT WRITE:
-- Cell 1 (1,1): ${STYLES[0]}
-- Cell 2 (1,2): ${STYLES[1]}
-- Cell 3 (1,3): ${STYLES[2]}
-- Cell 4 (2,1): ${STYLES[3]}
-- Cell 5 (2,2): ${STYLES[4]}
-- Cell 6 (2,3): ${STYLES[5]}
-- Cell 7 (3,1): ${STYLES[6]}
-- Cell 8 (3,2): ${STYLES[7]}
-- Cell 9 (3,3): ${STYLES[8]}
+GRID LAYOUT (3 rows × 3 columns):
+Row 1: [${STYLES[0]}] [${STYLES[1]}] [${STYLES[2]}]
+Row 2: [${STYLES[3]}] [${STYLES[4]}] [${STYLES[5]}]
+Row 3: [${STYLES[6]}] [${STYLES[7]}] [${STYLES[8]}]
 
-OUTPUT FORMAT:
-- A single high-quality 3x3 grid image.
-- Photorealistic results.
-- ZERO text anywhere in the image.`;
+TECHNIQUE: Use inpainting/masking approach - mask ONLY the hair region, keep face region completely frozen/locked.
+
+FINAL OUTPUT CHECKLIST:
+✅ Single SQUARE image (1:1 ratio)
+✅ Exactly 3x3 grid (9 cells)
+✅ Same identical face in all 9 cells
+✅ Different hairstyle in each cell
+✅ Photorealistic quality
+✅ **ABSOLUTELY ZERO TEXT/LETTERS/NUMBERS ANYWHERE**
+✅ Clean background, no overlays
+✅ Pure photography style - NO graphic design elements`;
 
         // Gemini API 호출 (Nano Banana Pro = gemini-3-pro-image-preview)
         const geminiResponse = await fetch(

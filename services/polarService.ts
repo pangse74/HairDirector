@@ -102,30 +102,26 @@ export function checkPaymentCallback(): { status: 'success', checkoutId?: string
     const urlParams = new URLSearchParams(window.location.search);
     const checkoutStatus = urlParams.get('checkout');
 
-    // 중복 처리 방지 (새로고침 시 등)
-    const SESSION_KEY = 'hairfit_checkout_processed';
-    const isProcessed = sessionStorage.getItem(SESSION_KEY);
-
     if (checkoutStatus === 'success') {
-        if (isProcessed) {
+        // URL에서 checkout_id 추출
+        const checkoutId = urlParams.get('checkout_id') || `checkout_${Date.now()}`;
+
+        // 중복 처리 방지: 이 특정 checkout이 이미 처리되었는지 확인
+        const PROCESSED_KEY = `hairfit_processed_${checkoutId}`;
+        if (sessionStorage.getItem(PROCESSED_KEY)) {
             // 이미 처리된 결제 건이면 URL만 정리하고 무시
             const newUrl = window.location.pathname;
             window.history.replaceState({}, document.title, newUrl);
             return null;
         }
 
-        // URL에서 checkout_id 추출 (Polar가 보통 반환해줌, 없으면 null)
-        // 실제로는 Polar 리다이렉트 시 checkout_id 파라미터가 있을 수 있음
-        const checkoutId = urlParams.get('checkout_id') || undefined;
-
-        // 처리 완료 플래그 설정
-        sessionStorage.setItem(SESSION_KEY, 'true');
+        // 이 checkout을 처리됨으로 표시
+        sessionStorage.setItem(PROCESSED_KEY, 'true');
 
         // URL 정리
         const newUrl = window.location.pathname;
         window.history.replaceState({}, document.title, newUrl);
 
-        // checkoutId도 반환하여 저장할 수 있게 함
         return { status: 'success', checkoutId };
     } else if (checkoutStatus === 'cancel') {
         const newUrl = window.location.pathname;

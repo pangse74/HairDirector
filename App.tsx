@@ -63,6 +63,15 @@ const App: React.FC = () => {
 
   // 컴포넌트 마운트 시 랜덤 명언 설정 및 프리미엄 상태 확인
   useEffect(() => {
+    // 1. URL 쿼리 파라미터로 탭 전환 (외부 링크 지원)
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    if (tabParam === 'history' || tabParam === 'saved' || tabParam === 'home') {
+      setActiveTab(tabParam);
+      // URL 클린업 (선택 사항, 네비게이션 강조를 위해 유지해도 됨)
+    }
+
+    // 2. 랜덤 명언 설정
     const randomIndex = Math.floor(Math.random() * QUOTES.length);
     setRandomQuote(QUOTES[randomIndex]);
 
@@ -84,12 +93,10 @@ const App: React.FC = () => {
       if (backupImage) {
         console.log("🔄 결제 후 이미지 복구 및 자동 분석 시작");
         setOriginalImage(backupImage);
+        setState(AppState.PREVIEW); // 프리뷰 상태로 전환 (필수)
         sessionStorage.removeItem('hairfit_backup_image'); // 1회용 사용 후 삭제
 
-        // [중요] 상태 업데이트 반영을 위해 약간의 지연 후 분석 시작
-        // setOriginalImage는 비동기이므로, 별도의 useEffect나 setTimeout이 필요할 수 있음
-        // 하지만 여기서는 originalImage가 업데이트되면 실행되도록 유도하거나, 
-        // 직접 함수를 호출할 수 없으므로(의존성 문제), 플래그를 세웁니다.
+        // handleStartAnalysis 호출을 위한 플래그
         sessionStorage.setItem('hairfit_auto_start', 'true');
       }
 
@@ -424,13 +431,25 @@ const App: React.FC = () => {
   }, [originalImage, isPremium]);
 
   // [추가] 결제 후 자동 시작 감지용 Effect (handleStartAnalysis 정의 이후에 배치)
+  // [추가] 결제 후 자동 시작 감지용 Effect (handleStartAnalysis 정의 이후에 배치)
   useEffect(() => {
-    if (originalImage && isPremium && sessionStorage.getItem('hairfit_auto_start') === 'true') {
-      sessionStorage.removeItem('hairfit_auto_start');
+    // sessionStorage 체크를 가장 먼저 수행하여 불필요한 실행 방지
+    const shouldAutoStart = sessionStorage.getItem('hairfit_auto_start') === 'true';
+
+    if (shouldAutoStart && originalImage && isPremium) {
+      sessionStorage.removeItem('hairfit_auto_start'); // 즉시 삭제하여 재진입 방지
       console.log("🚀 결제 완료되어 자동 분석을 시작합니다.");
-      setTimeout(() => handleStartAnalysis(), 100); // 약간의 지연 추가 안전장치
+
+      // 상태 업데이트와 충돌하지 않도록 약간의 지연 후 실행
+      // handleStartAnalysis를 의존성 배열에서 제거하거나, 함수형 업데이트를 사용해야 함
+      // 여기서는 handleStartAnalysis가 useCallback으로 감싸져 있다고 가정하지만, 
+      // 만약 의존성이 바뀌면 재실행될 수 있으므로, 플래그(shouldAutoStart)가 가장 중요함.
+      setTimeout(() => {
+        handleStartAnalysis();
+      }, 500);
     }
-  }, [originalImage, isPremium, handleStartAnalysis]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [originalImage, isPremium]); // handleStartAnalysis 제거하여 루프 방지
 
   const handleReset = () => {
     setState(AppState.IDLE);
