@@ -77,15 +77,19 @@ export const VideoConsultingModal: React.FC<VideoConsultingModalProps> = ({
                         <ul className="space-y-2">
                             <li className="flex items-center gap-2 text-gray-300 text-xs">
                                 <i className="fas fa-check text-green-400"></i>
-                                <span>전체 길이 풀영상 시청 무제한</span>
+                                <span>AI 정밀 얼굴형 분석 리포트</span>
                             </li>
                             <li className="flex items-center gap-2 text-gray-300 text-xs">
                                 <i className="fas fa-check text-green-400"></i>
-                                <span>AI 스타일링 Q&A 무제한 이용</span>
+                                <span>맞춤형 헤어스타일 추천 (9종)</span>
                             </li>
                             <li className="flex items-center gap-2 text-gray-300 text-xs">
                                 <i className="fas fa-check text-green-400"></i>
-                                <span>매월 업데이트되는 트렌드북 제공</span>
+                                <span>스타일링 팁 & 미용실 가이드</span>
+                            </li>
+                            <li className="flex items-center gap-2 text-gray-300 text-xs">
+                                <i className="fas fa-check text-green-400"></i>
+                                <span>워터마크 없는 고화질 이미지</span>
                             </li>
                         </ul>
                     </div>
@@ -97,8 +101,8 @@ export const VideoConsultingModal: React.FC<VideoConsultingModalProps> = ({
                                 onClick={handlePaymentClick}
                                 className="w-full py-4 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-bold text-lg hover:opacity-90 transition-all shadow-lg shadow-violet-500/20 glow-button flex items-center justify-center gap-2 group"
                             >
-                                <span>전체 영상 잠금 해제</span>
-                                <i className="fas fa-lock-open group-hover:rotate-12 transition-transform"></i>
+                                <span>스캔 시작</span>
+                                <i className="fas fa-expand group-hover:scale-110 transition-transform"></i>
                             </button>
 
                             <p className="text-center text-gray-500 text-[10px] mt-3">
