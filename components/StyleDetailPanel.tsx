@@ -74,46 +74,94 @@ export const StyleDetailPanel: React.FC<StyleDetailPanelProps> = ({
         }
     };
 
-    // 전체 카드 다운로드 핸들러
+    // 전체 카드 다운로드 핸들러 (화면 밖 복제 방식 - Off-screen Clone Strategy)
     const handleDownload = async () => {
         if (!panelRef.current) return;
 
-        // 버튼 숨기기 (캡처 전)
+        // 버튼 숨기기 (캡처 전 사용자 피드백용)
         if (buttonGroupRef.current) buttonGroupRef.current.style.visibility = 'hidden';
 
         try {
+            // [전략] 화면 밖에서 제약 없이 렌더링하기 위해 노드 복제
+            const clone = panelRef.current.cloneNode(true) as HTMLElement;
+
+            // 임시 컨테이너 생성 (화면 밖 배치)
+            const container = document.createElement('div');
+            container.style.position = 'absolute';
+            container.style.left = '-9999px';
+            container.style.top = '0';
+            // 모바일 레이아웃 유지 (너비 고정)
+            container.style.width = '100vw';
+            container.style.maxWidth = '28rem'; // max-w-md (448px)
+            document.body.appendChild(container);
+            container.appendChild(clone);
+
+            // 1. 복제본 스타일 강제 해제 (높이 족쇄 풀기)
+            clone.style.height = 'auto';
+            clone.style.maxHeight = 'none';
+            clone.style.overflow = 'visible';
+            clone.style.position = 'relative';
+            clone.style.transform = 'none';
+            clone.style.animation = 'none';
+            clone.style.borderRight = 'none'; // 테두리 정리
+            clone.style.boxShadow = 'none';
+
+            // 2. 내부 스크롤 영역 찾아서 확장
+            // querySelector로 복제본 내부의 스크롤 컨테이너(.overflow-y-auto) 찾기
+            const scrollContainer = clone.querySelector('.overflow-y-auto') as HTMLElement;
+            if (scrollContainer) {
+                scrollContainer.style.height = 'auto';
+                scrollContainer.style.overflow = 'visible';
+                scrollContainer.style.flex = 'none'; // flex-1 해제
+
+                // 클래스 제거로 혹시 모를 간섭 방지
+                scrollContainer.classList.remove('overflow-y-auto');
+            }
+
+            // 3. 복제본 내의 버튼 그룹 제거 (공간 차지 안하도록)
+            // 구조상 마지막 div가 버튼 그룹임. 안전하게 삭제.
+            const buttonGroupClone = clone.lastElementChild as HTMLElement;
+            if (buttonGroupClone) {
+                buttonGroupClone.style.display = 'none';
+            }
+
+            // 헤더의 닫기 버튼 제거
+            const closeButton = clone.querySelector('button');
+            if (closeButton) closeButton.style.display = 'none';
+
             const { toPng } = await import('html-to-image');
 
-            // html-to-image 사용 및 배경색 명시
-            const dataUrl = await toPng(panelRef.current, {
+            // 4. 렌더링 대기 (이미지/폰트 로딩 확보)
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            // 5. 캡처 수행 (복제본 대상)
+            const dataUrl = await toPng(clone, {
                 quality: 1.0,
-                pixelRatio: 3,
-                backgroundColor: '#1a1a24', // 명시적 배경색 지정 (투명도 문제 해결)
+                pixelRatio: 2,
+                backgroundColor: '#1a1a24',
                 cacheBust: true,
                 style: {
-                    // [중요] 캡처 시 애니메이션 강제 비활성화하여 투명하게 찍히는 문제 해결
-                    animation: 'none',
-                    transition: 'none',
-                    opacity: '1',
-                    transform: 'none',
                     fontSmooth: 'antialiased',
                     '-webkit-font-smoothing': 'antialiased',
                 }
             });
 
-            // 버튼 다시 보이기
-            if (buttonGroupRef.current) buttonGroupRef.current.style.visibility = 'visible';
-
+            // 6. 다운로드 처리
             const link = document.createElement('a');
             link.href = dataUrl;
             link.download = `헤어디렉터_스타일카드_${styleName || style.name}_${new Date().toISOString().split('T')[0]}.png`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+
+            // 뒷정리
+            document.body.removeChild(container);
+
         } catch (error) {
             console.error('Download failed:', error);
             alert('이미지 생성에 실패했습니다.');
         } finally {
+            // 버튼 다시 보이기
             if (buttonGroupRef.current) buttonGroupRef.current.style.visibility = 'visible';
         }
     };
@@ -178,11 +226,9 @@ export const StyleDetailPanel: React.FC<StyleDetailPanelProps> = ({
                             </div>
                         </div>
                     </div>
-                    {/* 닫기 버튼은 캡처 시 숨기기 위해 별도 처리 대신, 헤더에 포함되어 캡처됨을 인지 */}
-                    {/* 만약 닫기 버튼도 숨기고 싶다면 data-html2canvas-ignore 사용 가능 */}
+                    {/* 닫기 버튼 */}
                     <button
                         onClick={onClose}
-                        data-html2canvas-ignore
                         className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
                     >
                         <i className="fas fa-times text-lg"></i>
