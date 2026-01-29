@@ -215,22 +215,50 @@ export const AnalysisResultView: React.FC<Props> = ({
 
           // 4. 전체 리포트 캡처 저장
           await new Promise(resolve => setTimeout(resolve, 500));
+
+          // 캡처 전 요약 카드 숨기기 (겹침 방지)
+          let originalDisplay = '';
+          if (summaryCardRef.current) {
+            originalDisplay = summaryCardRef.current.style.display;
+            summaryCardRef.current.style.display = 'none';
+          }
+
           if (reportRef.current) {
-            const html2canvas = (await import('html2canvas')).default;
-            const canvas = await html2canvas(reportRef.current, {
-              backgroundColor: '#0a0a0f',
-              scale: 2,
-              useCORS: true,
-              height: reportRef.current.scrollHeight,
-              windowHeight: reportRef.current.scrollHeight,
-            });
-            const link4 = document.createElement('a');
-            link4.href = canvas.toDataURL('image/png');
-            link4.download = `헤어디렉터_분석리포트_${timestamp}.png`;
-            document.body.appendChild(link4);
-            link4.click();
-            document.body.removeChild(link4);
-            console.log('✅ 4/4 전체 리포트 저장 완료');
+            // [수정] 캡처를 위해 임시로 스타일 변경 (스크롤 제거 및 전체 높이 확장)
+            // 이렇게 해야 '보이는 그대로(WYSIWYG)' 왜곡 없이 전체가 찍힘
+            const originalOverflow = reportRef.current.style.overflow;
+            const originalHeight = reportRef.current.style.height;
+
+            reportRef.current.style.overflow = 'visible';
+            reportRef.current.style.height = 'auto';
+
+            try {
+              const html2canvas = (await import('html2canvas')).default;
+              const canvas = await html2canvas(reportRef.current, {
+                backgroundColor: '#0a0a0f',
+                scale: 2,
+                useCORS: true,
+                // height, windowHeight 옵션 제거 -> auto 스타일이 적용되었으므로 자동 감지됨
+              });
+              const link4 = document.createElement('a');
+              link4.href = canvas.toDataURL('image/png');
+              link4.download = `헤어디렉터_분석리포트_${timestamp}.png`;
+              document.body.appendChild(link4);
+              link4.click();
+              document.body.removeChild(link4);
+              console.log('✅ 4/4 전체 리포트 저장 완료');
+            } catch (err) {
+              console.error('리포트 캡처 실패:', err);
+            } finally {
+              // 스타일 복구 (반드시 실행)
+              reportRef.current.style.overflow = originalOverflow;
+              reportRef.current.style.height = originalHeight;
+            }
+          }
+
+          // 캡처 후 요약 카드 복구
+          if (summaryCardRef.current) {
+            summaryCardRef.current.style.display = originalDisplay;
           }
 
           setAutoSaveComplete(true);
@@ -281,20 +309,55 @@ export const AnalysisResultView: React.FC<Props> = ({
     }
   }, [userEmail, resultImage, autoEmailSent, emailSent, analysisResult]);
 
-  // 수동 다운로드 핸들러
+  // 수동 다운로드 핸들러 (전체 리포트 캡처)
   const handleDownload = async () => {
-    if (!resultImage) return;
+    if (!reportRef.current) return;
     const timestamp = new Date().toISOString().split('T')[0];
 
-    const link = document.createElement('a');
-    link.href = resultImage;
-    link.download = `헤어디렉터_AI추천스타일_${timestamp}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // 버튼 숨기기 (캡처 전)
+    // 하단 버튼 영역을 잠시 숨김 처리하려면 해당 부모 요소를 찾아야 함.
+    // 여기서는 간단히 전체 리포트 영역을 캡처하므로 버튼도 포함됨.
+    // 만약 버튼을 제외하고 싶다면 별도 처리가 필요하지만, 사용자는 "전체 페이지"를 원했으므로 포함하거나,
+    // 필요 시 filter 옵션으로 제외 가능. 일단 사용자 요청("전체 리포트 페이지 전체")에 따라 그대로 둠.
+
+    try {
+      const { toPng } = await import('html-to-image');
+
+      // [수정] 캡처를 위해 임시로 스타일 변경 (스크롤 제거 및 전체 높이 확장)
+      const originalOverflow = reportRef.current.style.overflow;
+      const originalHeight = reportRef.current.style.height;
+
+      // 전체 내용을 다 보여주도록 변경
+      reportRef.current.style.overflow = 'visible';
+      reportRef.current.style.height = 'auto';
+
+      const dataUrl = await toPng(reportRef.current, {
+        quality: 1.0,
+        pixelRatio: 2, // 너무 크면 모바일에서 터질 수 있으므로 2배율 정도 권장 (PC에서는 충분히 큼)
+        cacheBust: true,
+        style: {
+          fontSmooth: 'antialiased',
+          '-webkit-font-smoothing': 'antialiased',
+        }
+      });
+
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = `헤어디렉터_분석리포트_전체_${timestamp}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // 스타일 복구
+      reportRef.current.style.overflow = originalOverflow;
+      reportRef.current.style.height = originalHeight;
+
+    } catch (error) {
+      console.error('Download failed:', error);
+      alert('이미지 저장에 실패했습니다.');
+    }
   };
 
-  // [추가] 리포트 텍스트 복사 핸들러
   const handleCopyReport = async () => {
     const reportText = `[헤어디렉터 AI 분석 리포트]
 --------------------------------
@@ -313,10 +376,30 @@ ${stylingTips.slice(0, 3).map(t => `- ${t}`).join('\n')}
 
     try {
       await navigator.clipboard.writeText(reportText);
-      alert('리포트 내용이 복사되었습니다!\n메시지나 카톡에 붙여넣기 해보세요.');
+      alert('리포트 내용이 복사되었습니다!\n메시지나 SNS에 붙여넣기 해보세요.');
     } catch (err) {
       console.error('Failed to copy report:', err);
       alert('복사에 실패했습니다.');
+    }
+  };
+
+  // 공유하기 핸들러
+  const handleShare = async () => {
+    const shareData = {
+      title: '헤어디렉터 AI 얼굴형 분석 리포트',
+      text: `[헤어디렉터]\n내 얼굴형 분석 결과: ${faceShapeKo} (${skinToneKo})\n추천 스타일 BEST 5 확인하기!`,
+      url: window.location.href,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(`${shareData.text}\n${shareData.url}`);
+        alert('공유 텍스트가 클립보드에 복사되었습니다!\n원하는 곳에 붙여넣기 해보세요.');
+      }
+    } catch (error) {
+      console.error('Share failed:', error);
     }
   };
 
@@ -527,14 +610,16 @@ ${stylingTips.slice(0, 3).map(t => `- ${t}`).join('\n')}
                       setSelectedStyle(index);
                       onStyleClick?.(STYLE_ID_MAP[styleName] || 'default', index, styleName, resultImage);
                     }}
-                    className={`p-3 rounded-xl border text-center transition-all ${selectedStyle === index
+                    className={`p-3 rounded-xl border transition-all flex flex-col items-center justify-center gap-1.5 min-h-[100px] ${selectedStyle === index
                       ? 'bg-violet-600/30 border-violet-500'
                       : 'bg-white/5 border-white/10 hover:bg-white/10'
                       }`}
                   >
-                    <span className="text-violet-400 font-bold text-lg">{index + 1}</span>
-                    <p className="text-gray-300 text-xs mt-1 truncate">{styleName}</p>
-                    {rec && <p className="text-cyan-400 text-[10px]">{rec.score}점</p>}
+                    <span className="text-violet-400 font-bold text-lg leading-none">{index + 1}</span>
+                    <span className="text-gray-300 text-xs font-medium mt-0.5 break-keep text-center leading-snug">
+                      {styleName}
+                    </span>
+                    {rec && <span className="text-cyan-400 text-[10px] leading-none">{rec.score}점</span>}
                   </button>
                 );
               })}
@@ -686,63 +771,6 @@ ${stylingTips.slice(0, 3).map(t => `- ${t}`).join('\n')}
 
           {/* 하단 버튼 */}
           <div className="pt-4 space-y-3">
-            {/* 이메일로 리포트 받기 */}
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/20">
-              <div className="flex items-center gap-2 mb-3">
-                <i className="fas fa-envelope text-cyan-400"></i>
-                <span className="text-white font-bold text-sm">이메일로 리포트 받기</span>
-              </div>
-
-              {emailSent ? (
-                <div className="flex items-center gap-2 p-3 rounded-xl bg-green-500/20 border border-green-500/30">
-                  <i className="fas fa-check-circle text-green-400"></i>
-                  <span className="text-green-300 text-sm">리포트가 이메일로 전송되었습니다!</span>
-                </div>
-              ) : (
-                <>
-                  <div className="flex gap-2">
-                    <input
-                      type="email"
-                      value={emailInput}
-                      onChange={(e) => {
-                        setEmailInput(e.target.value);
-                        setEmailError(null);
-                      }}
-                      placeholder="이메일 주소 입력"
-                      className="flex-1 px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 text-sm"
-                      disabled={emailSending}
-                    />
-                    <button
-                      onClick={handleSendEmail}
-                      disabled={emailSending}
-                      className="px-5 py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold text-sm hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                    >
-                      {emailSending ? (
-                        <>
-                          <i className="fas fa-spinner fa-spin"></i>
-                          전송중
-                        </>
-                      ) : (
-                        <>
-                          <i className="fas fa-paper-plane"></i>
-                          전송
-                        </>
-                      )}
-                    </button>
-                  </div>
-                  {emailError && (
-                    <div className="mt-2 text-red-400 text-xs flex items-center gap-1">
-                      <i className="fas fa-exclamation-circle"></i>
-                      {emailError}
-                    </div>
-                  )}
-                  <p className="mt-2 text-gray-500 text-xs">
-                    분석 결과와 추천 스타일을 이메일로 받아보세요.
-                  </p>
-                </>
-              )}
-            </div>
-
             {/* [추가] 텍스트 복사 버튼 */}
             <button
               onClick={handleCopyReport}
@@ -753,13 +781,22 @@ ${stylingTips.slice(0, 3).map(t => `- ${t}`).join('\n')}
             </button>
 
             {resultImage && (
-              <button
-                onClick={handleDownload}
-                className="w-full py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-bold text-lg flex items-center justify-center gap-3 hover:opacity-90 transition-all shadow-lg shadow-violet-500/30"
-              >
-                <i className="fas fa-download"></i>
-                이미지 다운로드
-              </button>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={handleShare}
+                  className="w-full py-4 rounded-2xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold text-lg flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-lg shadow-cyan-500/20"
+                >
+                  <i className="fas fa-share-alt"></i>
+                  공유하기
+                </button>
+                <button
+                  onClick={handleDownload}
+                  className="w-full py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-bold text-lg flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-lg shadow-violet-500/30"
+                >
+                  <i className="fas fa-download"></i>
+                  다운로드
+                </button>
+              </div>
             )}
             <button
               onClick={onReset}

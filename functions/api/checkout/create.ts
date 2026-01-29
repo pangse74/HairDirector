@@ -12,11 +12,14 @@ interface RequestBody {
     cancelUrl: string;
 }
 
-// CORS 헤더
+// CORS 및 캐시 방지 헤더
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
+    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
 };
 
 export const onRequest: PagesFunction<Env> = async (context) => {

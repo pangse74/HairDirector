@@ -565,11 +565,19 @@ const App: React.FC = () => {
   };
 
   // 공통 네비게이션 핸들러
-  const handleNavClick = (tab: 'home' | 'history' | 'saved') => {
+  const handleNavClick = (tab: 'home' | 'history' | 'saved' | 'report') => {
     setActiveTab(tab);
-    setState(AppState.IDLE);
-    setResultImage(null); // 결과 이미지 초기화 (선택 사항)
-    setOriginalImage(null); // 원본 이미지 초기화 (선택 사항)
+
+    // 탭 이동 시 데이터를 초기화하지 않음 (사용자가 다시 분석결과를 보고 싶어할 수 있음)
+    // 단, '홈'으로 갈 때는 초기 화면을 보여주기 위해 IDLE 상태로 변경하되 데이터는 유지
+    if (tab === 'home' || tab === 'saved' || tab === 'history') {
+      setState(AppState.IDLE);
+    }
+    // 'report' 탭으로 갈 때는 데이터가 있다면 보여주기 위해 상태 유지 (또는 renderContent 조건에 따름)
+
+    // [중요] 아래 초기화 로직 제거됨
+    // setResultImage(null); 
+    // setOriginalImage(null); 
   };
 
   const renderContent = () => {
@@ -704,13 +712,7 @@ const App: React.FC = () => {
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
             >
-              {/* [테스트용] 환불 이메일 발송 버튼 */}
-              <button
-                onClick={() => handleSendRefundEmail('사용자 요청에 의한 테스트 발송')}
-                className="mb-4 px-3 py-1 bg-red-500/20 text-red-300 text-xs rounded-full border border-red-500/30 hover:bg-red-500/30 transition-all"
-              >
-                <i className="fas fa-bug mr-1"></i> [Test] 환불 메일 발송 테스트
-              </button>
+
               {/* 전체 화면 드래그 오버레이 */}
               {isDragging && (
                 <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center pointer-events-none">

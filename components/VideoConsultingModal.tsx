@@ -97,17 +97,19 @@ export const VideoConsultingModal: React.FC<VideoConsultingModalProps> = ({
                     {/* 결제 유도 버튼 (프리미엄이 아닌 경우만) */}
                     {!isPremium ? (
                         <>
-                            <button
-                                onClick={handlePaymentClick}
-                                className="w-full py-4 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-bold text-lg hover:opacity-90 transition-all shadow-lg shadow-violet-500/20 glow-button flex items-center justify-center gap-2 group"
-                            >
-                                <span>스캔 시작</span>
-                                <i className="fas fa-expand group-hover:scale-110 transition-transform"></i>
-                            </button>
+                            <>
+                                <button
+                                    onClick={onClose}
+                                    className="w-full py-4 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-bold text-lg hover:opacity-90 transition-all shadow-lg shadow-violet-500/20 glow-button flex items-center justify-center gap-2 group"
+                                >
+                                    <span>닫기</span>
+                                    <i className="fas fa-times group-hover:scale-110 transition-transform"></i>
+                                </button>
 
-                            <p className="text-center text-gray-500 text-[10px] mt-3">
-                                커피 한 잔 값($5.99)으로 평생의 인생 머리를 찾아보세요.
-                            </p>
+                                <p className="text-center text-gray-500 text-[10px] mt-3">
+                                    커피 한 잔 값($5.99)으로 평생의 인생 머리를 찾아보세요.
+                                </p>
+                            </>
                         </>
                     ) : (
                         <div className="text-center py-2">

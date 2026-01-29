@@ -78,24 +78,34 @@ export const StyleDetailPanel: React.FC<StyleDetailPanelProps> = ({
     const handleDownload = async () => {
         if (!panelRef.current) return;
 
+        // 버튼 숨기기 (캡처 전)
+        if (buttonGroupRef.current) buttonGroupRef.current.style.visibility = 'hidden';
+
         try {
-            const html2canvas = (await import('html2canvas')).default;
+            const { toPng } = await import('html-to-image');
 
-            // 버튼 숨기기 (캡처 전)
-            if (buttonGroupRef.current) buttonGroupRef.current.style.visibility = 'hidden';
-
-            const canvas = await html2canvas(panelRef.current, {
-                backgroundColor: '#1a1a24', // 패널 배경색 유지
-                scale: 2, // 고해상도
-                useCORS: true,
-                logging: false,
+            // html-to-image 사용 및 배경색 명시
+            const dataUrl = await toPng(panelRef.current, {
+                quality: 1.0,
+                pixelRatio: 3,
+                backgroundColor: '#1a1a24', // 명시적 배경색 지정 (투명도 문제 해결)
+                cacheBust: true,
+                style: {
+                    // [중요] 캡처 시 애니메이션 강제 비활성화하여 투명하게 찍히는 문제 해결
+                    animation: 'none',
+                    transition: 'none',
+                    opacity: '1',
+                    transform: 'none',
+                    fontSmooth: 'antialiased',
+                    '-webkit-font-smoothing': 'antialiased',
+                }
             });
 
             // 버튼 다시 보이기
             if (buttonGroupRef.current) buttonGroupRef.current.style.visibility = 'visible';
 
             const link = document.createElement('a');
-            link.href = canvas.toDataURL('image/png');
+            link.href = dataUrl;
             link.download = `헤어디렉터_스타일카드_${styleName || style.name}_${new Date().toISOString().split('T')[0]}.png`;
             document.body.appendChild(link);
             link.click();
@@ -103,7 +113,28 @@ export const StyleDetailPanel: React.FC<StyleDetailPanelProps> = ({
         } catch (error) {
             console.error('Download failed:', error);
             alert('이미지 생성에 실패했습니다.');
+        } finally {
             if (buttonGroupRef.current) buttonGroupRef.current.style.visibility = 'visible';
+        }
+    };
+
+    // 공유하기 핸들러
+    const handleShare = async () => {
+        const shareData = {
+            title: `헤어디렉터 - ${styleName || style.name}`,
+            text: `[헤어디렉터 AI 분석]\n내 얼굴형에 딱 맞는 인생 머리: ${styleName || style.name}\n\n"${style.description}"\n\n지금 바로 AI 얼굴형 분석을 받아보세요!`,
+            url: window.location.href,
+        };
+
+        try {
+            if (navigator.share) {
+                await navigator.share(shareData);
+            } else {
+                await navigator.clipboard.writeText(`${shareData.title}\n${shareData.text}\n${shareData.url}`);
+                alert('공유 텍스트가 클립보드에 복사되었습니다!\n원하는 곳에 붙여넣기 해보세요.');
+            }
+        } catch (error) {
+            console.error('Sharing failed:', error);
         }
     };
 
@@ -253,8 +284,8 @@ export const StyleDetailPanel: React.FC<StyleDetailPanelProps> = ({
                                 onClick={handleSave}
                                 disabled={saved}
                                 className={`py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${saved
-                                        ? 'bg-green-500/20 text-green-400'
-                                        : 'bg-pink-500/20 text-pink-400 hover:bg-pink-500/30'
+                                    ? 'bg-green-500/20 text-green-400'
+                                    : 'bg-pink-500/20 text-pink-400 hover:bg-pink-500/30'
                                     }`}
                             >
                                 <i className={`fas ${saved ? 'fa-check' : 'fa-bookmark'}`}></i>
@@ -262,13 +293,24 @@ export const StyleDetailPanel: React.FC<StyleDetailPanelProps> = ({
                             </button>
                         </div>
                     )}
-                    <button
-                        className="w-full py-3 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2"
-                        onClick={onClose}
-                    >
-                        <span>확인</span>
-                        <i className="fas fa-check"></i>
-                    </button>
+
+                    {/* [확인] 및 [공유] 버튼 그룹 */}
+                    <div className="grid grid-cols-[1fr_2fr] gap-2">
+                        <button
+                            onClick={handleShare}
+                            className="py-3 rounded-xl bg-gradient-to-r from-gray-700 to-gray-600 text-white font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2 border border-white/10"
+                        >
+                            <i className="fas fa-share-alt"></i>
+                            공유
+                        </button>
+                        <button
+                            className="w-full py-3 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2"
+                            onClick={onClose}
+                        >
+                            <span>확인</span>
+                            <i className="fas fa-check"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

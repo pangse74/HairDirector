@@ -46,7 +46,8 @@ export async function getCheckoutDetails(checkoutId: string): Promise<{ email: s
  */
 export async function createCheckoutSession(email?: string): Promise<CheckoutSession> {
     try {
-        const response = await fetch('/api/checkout/create', {
+        // [수정] 브라우저 캐싱 방지를 위해 타임스탬프 추가
+        const response = await fetch(`/api/checkout/create?t=${Date.now()}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
