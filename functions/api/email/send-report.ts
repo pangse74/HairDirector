@@ -111,6 +111,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
   // 5. 이메일 발송 (fetch 사용)
   try {
+    console.log(`[Email] Resend API 호출 시작... To: ${email}, Subject: ${analysisResult.faceShapeKo} 분석 리포트`);
+    console.log(`[Email] API Key 길이: ${env.RESEND_API_KEY ? env.RESEND_API_KEY.length : '없음'}`);
+
     const resendResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -126,13 +129,24 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       })
     });
 
-    const responseData = await resendResponse.json() as { id?: string; error?: any };
+    console.log(`[Email] Resend API 응답 상태: ${resendResponse.status} ${resendResponse.statusText}`);
+
+    let responseData: any = {};
+    try {
+      responseData = await resendResponse.json();
+      console.log('[Email] Resend API 응답 데이터:', JSON.stringify(responseData));
+    } catch (parseError) {
+      console.error('[Email] 응답 JSON 파싱 실패:', parseError);
+      const text = await resendResponse.text();
+      console.log('[Email] 응답 텍스트:', text);
+      responseData = { error: text };
+    }
 
     if (!resendResponse.ok) {
       console.error('Resend API Error:', responseData);
       return new Response(JSON.stringify({
         success: false,
-        error: `이메일 전송 실패: ${JSON.stringify(responseData)}`
+        error: `이메일 전송 실패: ${responseData.error?.message || JSON.stringify(responseData)}`
       }), { status: 500 });
     }
 
