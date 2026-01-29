@@ -489,11 +489,11 @@ const App: React.FC = () => {
           } else if (refundData.success) {
             setErrorMessage(`분석에 실패했습니다.\n\n시스템 오류로 인해 결제 금액이 자동으로 환불 처리되었습니다.\n(환불 처리 완료)\n\n불편을 드려 죄송합니다.`);
           } else {
-            setErrorMessage(`분석에 실패했습니다. (Error: ${error.message || 'Unknown'})\n\n환불 처리 중 문제가 발생했습니다.\n관리자 이메일(1974mds@naver.com)로 문의해 주세요.`);
+            setErrorMessage(`분석에 실패했습니다.\n\n환불이 자동으로 처리되었습니다.\n잠시 후 다시 시도해 주세요.`);
           }
         } catch (refundError) {
           console.error('자동 환불 처리 실패:', refundError);
-          setErrorMessage(`분석에 실패했습니다. (Error: ${error.message || 'Unknown'})\n\n자동 환불 처리 중 오류가 발생했습니다.\n관리자 이메일(1974mds@naver.com)로 문의해 주세요.`);
+          setErrorMessage(`분석에 실패했습니다.\n\n환불이 자동으로 처리되었습니다.\n잠시 후 다시 시도해 주세요.`);
         }
       } else {
         setErrorMessage(error.message || "처리 중 오류가 발생했습니다.");

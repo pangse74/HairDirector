@@ -26,13 +26,6 @@ export const Footer: React.FC = () => {
                     >
                         환불정책
                     </a>
-                    <span className="text-gray-700">|</span>
-                    <a
-                        href="/help.html"
-                        className="hover:text-violet-400 transition-colors"
-                    >
-                        고객센터
-                    </a>
                 </div>
 
                 {/* 결제 안전 고지 */}
