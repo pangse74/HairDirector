@@ -11,7 +11,7 @@ import { StyleDetailPanel } from './components/StyleDetailPanel';
 import { VideoConsultingModal } from './components/VideoConsultingModal';
 import { Footer } from './components/Footer';
 import { PaymentModal } from './components/PaymentModal';
-import { getPremiumStatus, savePremiumStatus, checkPaymentCallback } from './services/polarService';
+import { getPremiumStatus, savePremiumStatus, checkPaymentCallback, clearPremiumStatus } from './services/polarService';
 
 
 const QUOTES = [
@@ -60,6 +60,7 @@ const App: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
+
   // 컴포넌트 마운트 시 랜덤 명언 설정 및 프리미엄 상태 확인
   useEffect(() => {
     const randomIndex = Math.floor(Math.random() * QUOTES.length);
@@ -71,11 +72,28 @@ const App: React.FC = () => {
 
     // 결제 콜백 확인
     const paymentResult = checkPaymentCallback();
-    if (paymentResult === 'success') {
-      savePremiumStatus();
+
+    // [자동 실행 로직] 결제 성공 후 돌아왔을 때
+    if (paymentResult?.status === 'success') {
+      savePremiumStatus(undefined, paymentResult.checkoutId);
       setIsPremium(true);
-      alert('결제가 완료되었습니다.');
-    } else if (paymentResult === 'cancel') {
+      // alert('결제가 완료되었습니다.'); // 자동 실행을 위해 알림 제거 혹은 유지 (사용자 경험 판단)
+
+      // 백업된 이미지 복구
+      const backupImage = sessionStorage.getItem('hairfit_backup_image');
+      if (backupImage) {
+        console.log("🔄 결제 후 이미지 복구 및 자동 분석 시작");
+        setOriginalImage(backupImage);
+        sessionStorage.removeItem('hairfit_backup_image'); // 1회용 사용 후 삭제
+
+        // [중요] 상태 업데이트 반영을 위해 약간의 지연 후 분석 시작
+        // setOriginalImage는 비동기이므로, 별도의 useEffect나 setTimeout이 필요할 수 있음
+        // 하지만 여기서는 originalImage가 업데이트되면 실행되도록 유도하거나, 
+        // 직접 함수를 호출할 수 없으므로(의존성 문제), 플래그를 세웁니다.
+        sessionStorage.setItem('hairfit_auto_start', 'true');
+      }
+
+    } else if (paymentResult?.status === 'cancel') {
       alert('결제가 취소되었습니다.');
     }
   }, []);
@@ -300,8 +318,10 @@ const App: React.FC = () => {
     const apiKeyEnv = (process as any).env?.API_KEY || (process as any).env?.GEMINI_API_KEY;
     const hasApiKeyEnv = !!(apiKeyEnv && apiKeyEnv.trim().length > 0);
 
-    // [결제 체크 로직] 프리미엄 유저가 아니면 결제 모달을 띄우고 분석 중단
-    if (!isPremium) {
+    // [결제 체크 로직 강화] React State뿐만 아니라 실제 스토리지 상태도 최우선 확인
+    // 분석 완료 후 스토리지에서 삭제되므로, 재분석 시 확실하게 차단됨
+    const currentStatus = getPremiumStatus();
+    if (!currentStatus.isPremium) {
       setShowPaymentModal(true);
       return;
     }
@@ -360,20 +380,57 @@ const App: React.FC = () => {
         console.warn('히스토리 저장 실패:', storageError);
       }
 
+      // [1회성 결제권 소비] 분석 완료 후 프리미엄 권한 해제하여 재분석 시 다시 결제하도록 함
+      clearPremiumStatus();
+      setIsPremium(false);
+
       setState(AppState.COMPLETED);
     } catch (error: any) {
       console.error("Analysis/Generation failed:", error);
+
+      // [자동 환불 로직] 분석 실패 시 환불 처리
+      // 실제 API 환불은 백엔드 키가 필요하므로, 여기서는 사용자에게 "환불 안내"를 제공하고
+      // 로컬 권한을 유지하거나(재시도 기회), 혹은 환불 접수 창을 띄우는 것이 좋습니다.
+      // 현재는 "실패했으니 환불될 수 있도록 안내" 하는 메시지를 띄우는 것으로 구현합니다.
+
+      const currentStatus = getPremiumStatus();
+      if (currentStatus.isPremium && currentStatus.checkoutId) {
+        // checkoutId가 있다는 것은 유료 결제 건임
+        setErrorMessage(`분석에 실패했습니다. (Error: ${error.message || 'Unknown'}) \n\n시스템 오류로 인해 분석이 완료되지 않았습니다.\n아래 [환불 요청] 버튼을 눌러주시면 즉시 전액 환불해 드립니다.`);
+      } else {
+        setErrorMessage(error.message || "처리 중 오류가 발생했습니다.");
+      }
+
+      /* 
+         원래는 여기서 await refundOrder(currentStatus.checkoutId) 등을 호출해야 하나
+         Polar.sh의 클라이언트 사이드 환불은 보안상 제한될 수 있습니다. 
+         따라서 명시적인 환불 버튼/안내를 제공하는 것이 가장 안전합니다.
+      */
+
       const errorStr = typeof error === 'string' ? error : JSON.stringify(error);
 
       if (errorStr.includes("Requested entity was not found") || errorStr.includes("PERMISSION_DENIED") || errorStr.includes("403")) {
         setErrorMessage("이 기능을 사용하려면 유료 결제가 활성화된 API 키가 필요합니다.");
         await handleOpenKeyDialog();
-      } else {
-        setErrorMessage(error.message || "처리 중 오류가 발생했습니다.");
       }
+
+      // [중요] 분석 실패 시(API 키 오류 포함) 권한을 초기화해야
+      // 다음 클릭 시 결제 모달이 다시 뜨게 됩니다. (환불 정책과 일치)
+      clearPremiumStatus();
+      setIsPremium(false);
+
       setState(AppState.ERROR);
     }
   }, [originalImage, isPremium]);
+
+  // [추가] 결제 후 자동 시작 감지용 Effect (handleStartAnalysis 정의 이후에 배치)
+  useEffect(() => {
+    if (originalImage && isPremium && sessionStorage.getItem('hairfit_auto_start') === 'true') {
+      sessionStorage.removeItem('hairfit_auto_start');
+      console.log("🚀 결제 완료되어 자동 분석을 시작합니다.");
+      setTimeout(() => handleStartAnalysis(), 100); // 약간의 지연 추가 안전장치
+    }
+  }, [originalImage, isPremium, handleStartAnalysis]);
 
   const handleReset = () => {
     setState(AppState.IDLE);
@@ -595,12 +652,29 @@ const App: React.FC = () => {
                     <i className="fas fa-exclamation-circle"></i>
                     <span className="font-bold">오류 발생</span>
                   </div>
-                  <p className="text-red-300 text-sm">{errorMessage}</p>
+                  <p className="text-red-300 text-sm whitespace-pre-wrap">{errorMessage}</p>
+
+                  {/* 환불 안내 링크 추가 */}
+                  {errorMessage?.includes("환불") && (
+                    <div className="mt-4 p-3 bg-red-500/20 rounded-xl border border-red-500/30">
+                      <p className="text-xs text-red-200 mb-2">
+                        결제 정보(이메일 등)와 함께 아래 버튼을 눌러주세요.
+                      </p>
+                      <a
+                        href="mailto:1974mds@naver.com?subject=[헤어디렉터] 분석 실패 환불 요청&body=결제일: (오늘 날짜)\n결제 이메일: \n이유: 시스템 분석 오류로 인한 자동 환불 요청"
+                        className="block w-full text-center py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-bold transition-colors"
+                      >
+                        <i className="fas fa-envelope mr-2"></i>
+                        환불 요청 이메일 보내기
+                      </a>
+                    </div>
+                  )}
+
                   <button
                     onClick={handleOpenKeyDialog}
                     className="mt-3 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 rounded-xl text-red-300 text-sm font-medium transition-all"
                   >
-                    <i className="fas fa-key mr-2"></i>API 키 변경
+                    <i className="fas fa-key mr-2"></i>API 키 변경 (개발자용)
                   </button>
                 </div>
               )}
@@ -716,6 +790,7 @@ const App: React.FC = () => {
       {showPaymentModal && (
         <PaymentModal
           onClose={() => setShowPaymentModal(false)}
+          currentImage={originalImage} // [추가] 결제 전 이미지 백업용
           onSuccess={() => {
             setIsPremium(true);
             setShowPaymentModal(false);

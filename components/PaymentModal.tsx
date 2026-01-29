@@ -4,9 +4,10 @@ import { createCheckoutSession } from '../services/polarService';
 interface PaymentModalProps {
     onClose: () => void;
     onSuccess?: () => void;
+    currentImage?: string | null; // [추가]
 }
 
-export const PaymentModal: React.FC<PaymentModalProps> = ({ onClose, onSuccess }) => {
+export const PaymentModal: React.FC<PaymentModalProps> = ({ onClose, onSuccess, currentImage }) => {
     const [email, setEmail] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -22,6 +23,11 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ onClose, onSuccess }
         setError(null);
 
         try {
+            // [중요] 결제 페이지 이동 전 현재 분석하려던 이미지 백업
+            if (currentImage) {
+                sessionStorage.setItem('hairfit_backup_image', currentImage);
+            }
+
             const session = await createCheckoutSession(email || undefined);
 
             // Polar.sh 체크아웃 페이지로 리다이렉트
