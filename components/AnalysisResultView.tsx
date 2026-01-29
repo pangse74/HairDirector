@@ -256,7 +256,8 @@ export const AnalysisResultView: React.FC<Props> = ({
         try {
           const response = await sendAnalysisReport(
             userEmail,
-            analysisResult
+            analysisResult,
+            resultImage
           );
 
           if (response.success) {
@@ -337,7 +338,8 @@ ${stylingTips.slice(0, 3).map(t => `- ${t}`).join('\n')}
     try {
       const response = await sendAnalysisReport(
         emailInput.trim(),
-        analysisResult
+        analysisResult,
+        resultImage
       );
 
       if (response.success) {

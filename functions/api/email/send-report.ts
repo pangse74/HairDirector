@@ -1,271 +1,135 @@
-// Cloudflare Pages Functions - Resend API를 통한 결과 리포트 이메일 전송
-// 이 함수는 /api/email/send-report 경로에서 실행됩니다.
+
+import { Resend } from 'resend';
+import { Buffer } from 'node:buffer'; // Cloudflare Workers Node.js compatibility layer
 
 interface Env {
     RESEND_API_KEY: string;
 }
 
-interface AnalysisResult {
-    faceShape: string;
-    faceShapeKo: string;
-    skinTone: string;
-    skinToneKo: string;
-    upperRatio: number;
-    middleRatio: number;
-    lowerRatio: number;
-    overallImpression?: string;
-    features: Array<{ name: string; nameKo: string; impact: string }>;
-    stylingTips: string[];
-    recommendations: Array<{ id: string; name: string; reason: string; score: number; priority: number }>;
-    avoidStyles?: Array<{ name: string; reason: string }>;
-}
-
 interface RequestBody {
     email: string;
-    analysisResult: AnalysisResult;
+    analysisResult: {
+        faceShapeKo: string;
+        skinToneKo: string;
+        features: { nameKo: string }[];
+        recommendations: { name: string }[];
+        stylingTips?: string[];
+    };
+    resultImage?: string; // Base64 string
 }
 
-// CORS 헤더
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-};
-
-// 이메일 HTML 템플릿 생성
-function generateEmailHTML(analysis: AnalysisResult): string {
-    const topRecommendations = analysis.recommendations.slice(0, 5);
-    const features = analysis.features.slice(0, 5);
-
-    return `
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>헤어디렉터 AI 분석 리포트</title>
-</head>
-<body style="margin: 0; padding: 0; font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif; background-color: #0a0a0f; color: #e5e5e5;">
-    <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-        <!-- 헤더 -->
-        <div style="text-align: center; margin-bottom: 40px;">
-            <h1 style="color: #a78bfa; font-size: 28px; margin-bottom: 10px;">헤어디렉터</h1>
-            <p style="color: #888; font-size: 14px;">AI 헤어스타일 분석 리포트</p>
-        </div>
-
-        <!-- 얼굴형 분석 -->
-        <div style="background: rgba(255,255,255,0.05); border-radius: 16px; padding: 24px; margin-bottom: 24px;">
-            <h2 style="color: #c4b5fd; font-size: 18px; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px;">
-                얼굴 분석 결과
-            </h2>
-            <table style="width: 100%; border-collapse: collapse;">
-                <tr>
-                    <td style="padding: 8px 0; color: #888;">얼굴형</td>
-                    <td style="padding: 8px 0; color: #fff; text-align: right; font-weight: bold;">${analysis.faceShapeKo}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 8px 0; color: #888;">피부톤</td>
-                    <td style="padding: 8px 0; color: #fff; text-align: right; font-weight: bold;">${analysis.skinToneKo}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 8px 0; color: #888;">얼굴 비율</td>
-                    <td style="padding: 8px 0; color: #fff; text-align: right;">
-                        상 ${analysis.upperRatio}% · 중 ${analysis.middleRatio}% · 하 ${analysis.lowerRatio}%
-                    </td>
-                </tr>
-            </table>
-        </div>
-
-        <!-- 전체 인상 -->
-        ${analysis.overallImpression ? `
-        <div style="background: rgba(167, 139, 250, 0.1); border-left: 3px solid #a78bfa; padding: 16px 20px; margin-bottom: 24px; border-radius: 0 8px 8px 0;">
-            <p style="color: #ddd; font-size: 14px; line-height: 1.6; margin: 0;">
-                ${analysis.overallImpression}
-            </p>
-        </div>
-        ` : ''}
-
-        <!-- 얼굴 특징 -->
-        <div style="background: rgba(255,255,255,0.05); border-radius: 16px; padding: 24px; margin-bottom: 24px;">
-            <h2 style="color: #c4b5fd; font-size: 18px; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px;">
-                주요 얼굴 특징
-            </h2>
-            <ul style="list-style: none; padding: 0; margin: 0;">
-                ${features.map(f => `
-                <li style="padding: 8px 0; color: #ccc; display: flex; align-items: center;">
-                    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${f.impact === 'positive' ? '#4ade80' : f.impact === 'consideration' ? '#fbbf24' : '#888'}; margin-right: 12px;"></span>
-                    ${f.nameKo}
-                </li>
-                `).join('')}
-            </ul>
-        </div>
-
-        <!-- 추천 헤어스타일 -->
-        <div style="background: rgba(255,255,255,0.05); border-radius: 16px; padding: 24px; margin-bottom: 24px;">
-            <h2 style="color: #c4b5fd; font-size: 18px; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px;">
-                추천 헤어스타일 TOP 5
-            </h2>
-            ${topRecommendations.map((rec, idx) => `
-            <div style="padding: 12px 0; ${idx < topRecommendations.length - 1 ? 'border-bottom: 1px solid rgba(255,255,255,0.05);' : ''}">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                    <span style="color: #fff; font-weight: bold;">
-                        <span style="color: #a78bfa; margin-right: 8px;">#${idx + 1}</span>
-                        ${rec.name}
-                    </span>
-                    <span style="background: linear-gradient(135deg, #7c3aed, #6d28d9); color: #fff; padding: 2px 8px; border-radius: 12px; font-size: 12px;">
-                        ${rec.score}점
-                    </span>
-                </div>
-                <p style="color: #888; font-size: 13px; margin: 4px 0 0 0; line-height: 1.5;">
-                    ${rec.reason}
-                </p>
-            </div>
-            `).join('')}
-        </div>
-
-        <!-- 스타일링 팁 -->
-        ${analysis.stylingTips && analysis.stylingTips.length > 0 ? `
-        <div style="background: rgba(255,255,255,0.05); border-radius: 16px; padding: 24px; margin-bottom: 24px;">
-            <h2 style="color: #c4b5fd; font-size: 18px; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px;">
-                맞춤 스타일링 팁
-            </h2>
-            <ul style="list-style: none; padding: 0; margin: 0;">
-                ${analysis.stylingTips.map(tip => `
-                <li style="padding: 10px 0; color: #ccc; font-size: 14px; line-height: 1.6; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                    💡 ${tip}
-                </li>
-                `).join('')}
-            </ul>
-        </div>
-        ` : ''}
-
-        <!-- 피해야 할 스타일 -->
-        ${analysis.avoidStyles && analysis.avoidStyles.length > 0 ? `
-        <div style="background: rgba(239, 68, 68, 0.1); border-radius: 16px; padding: 24px; margin-bottom: 24px;">
-            <h2 style="color: #f87171; font-size: 18px; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px;">
-                피하면 좋은 스타일
-            </h2>
-            ${analysis.avoidStyles.map(style => `
-            <div style="padding: 8px 0;">
-                <span style="color: #fca5a5; font-weight: bold;">❌ ${style.name}</span>
-                <p style="color: #888; font-size: 13px; margin: 4px 0 0 0;">${style.reason}</p>
-            </div>
-            `).join('')}
-        </div>
-        ` : ''}
-
-        <!-- 푸터 -->
-        <div style="text-align: center; padding-top: 30px; border-top: 1px solid rgba(255,255,255,0.1);">
-            <p style="color: #666; font-size: 12px; margin-bottom: 8px;">
-                본 리포트는 AI 분석 결과이며, 참고용으로만 활용해주세요.
-            </p>
-            <p style="color: #888; font-size: 14px;">
-                <a href="https://hairdirector.site" style="color: #a78bfa; text-decoration: none;">헤어디렉터</a>
-                에서 더 많은 스타일을 경험해보세요!
-            </p>
-            <p style="color: #555; font-size: 11px; margin-top: 20px;">
-                &copy; 2025 헤어디렉터 (Hair Director). All rights reserved.
-            </p>
-        </div>
-    </div>
-</body>
-</html>
-`;
-}
-
-export const onRequest: PagesFunction<Env> = async (context) => {
+export const onRequestPost: PagesFunction<Env> = async (context) => {
     const { request, env } = context;
 
-    // OPTIONS 요청 처리 (CORS preflight)
-    if (request.method === 'OPTIONS') {
-        return new Response(null, { headers: corsHeaders });
+    // 1. API 키 확인
+    if (!env.RESEND_API_KEY) {
+        return new Response(JSON.stringify({
+            success: false,
+            error: '이메일 서버 설정 오류: RESEND_API_KEY가 없습니다.'
+        }), { status: 500 });
     }
 
-    // POST 외의 메서드 거부
-    if (request.method !== 'POST') {
-        return new Response(
-            JSON.stringify({ error: 'Method not allowed' }),
-            { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-    }
-
+    // 2. 요청 데이터 파싱
+    let body: RequestBody;
     try {
-        // API 키 확인
-        const apiKey = env.RESEND_API_KEY;
-        if (!apiKey) {
-            console.error('RESEND_API_KEY not configured');
-            return new Response(
-                JSON.stringify({ error: 'Email service not configured' }),
-                { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
+        body = await request.json() as RequestBody;
+    } catch (e) {
+        return new Response(JSON.stringify({ success: false, error: '잘못된 요청 형식입니다.' }), { status: 400 });
+    }
+
+    const { email, analysisResult, resultImage } = body;
+
+    if (!email || !analysisResult) {
+        return new Response(JSON.stringify({ success: false, error: '이메일 주소와 분석 결과는 필수입니다.' }), { status: 400 });
+    }
+
+    const resend = new Resend(env.RESEND_API_KEY);
+
+    // 3. 이메일 템플릿 (HTML) 생성
+    const bestStyles = analysisResult.recommendations.slice(0, 5).map(r => r.name).join(', ');
+    const features = analysisResult.features.map(f => f.nameKo).join(', ');
+
+    const htmlContent = `
+    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+      <div style="background-color: #1a1a2e; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Hair Director</h1>
+        <p style="color: #a0a0b0; font-size: 14px; margin-top: 5px;">AI 얼굴형 분석 리포트</p>
+      </div>
+      
+      <div style="padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
+        <h2 style="color: #4a4a4a; font-size: 20px; border-bottom: 2px solid #6c5ce7; padding-bottom: 10px;">
+          고객님의 얼굴형 분석 결과
+        </h2>
+        
+        <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+          <tr>
+            <td style="padding: 10px; font-weight: bold; width: 120px; background-color: #f8f9fa;">얼굴형</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">${analysisResult.faceShapeKo}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px; font-weight: bold; background-color: #f8f9fa;">피부톤</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">${analysisResult.skinToneKo}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px; font-weight: bold; background-color: #f8f9fa;">주요 특징</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">${features}</td>
+          </tr>
+        </table>
+        
+        <div style="margin-top: 30px; background-color: #f0f3ff; padding: 20px; border-radius: 8px;">
+          <h3 style="color: #6c5ce7; margin-top: 0;">✨ AI 추천 헤어스타일 Best 5</h3>
+          <p style="font-size: 16px; font-weight: bold; margin-bottom: 0;">${bestStyles}</p>
+        </div>
+        
+        <div style="margin-top: 30px;">
+          <h3 style="color: #333;">💡 맞춤 스타일링 팁</h3>
+          <ul style="padding-left: 20px; color: #555;">
+            ${(analysisResult.stylingTips || []).map(tip => `<li style="margin-bottom: 8px;">${tip}</li>`).join('')}
+          </ul>
+        </div>
+        
+        <p style="margin-top: 40px; font-size: 12px; color: #888; text-align: center;">
+          본 메일은 발신 전용입니다. 더 자세한 내용은 <a href="https://hairdirector.site" style="color: #6c5ce7;">Hair Director</a>에서 확인하세요.
+        </p>
+      </div>
+    </div>
+  `;
+
+    // 4. 첨부파일 처리
+    const attachments: any[] = [];
+    if (resultImage) {
+        try {
+            // Base64 문자열에서 헤더 제거 (data:image/png;base64, 부분)
+            const base64Data = resultImage.split(';base64,').pop() || resultImage;
+            const buffer = Buffer.from(base64Data, 'base64');
+
+            attachments.push({
+                filename: 'hair_analysis_result.jpg',
+                content: buffer,
+            });
+        } catch (e) {
+            console.error('이미지 첨부 처리 중 오류:', e);
         }
+    }
 
-        // 요청 본문 파싱
-        const body = await request.json() as RequestBody;
-        const { email, analysisResult } = body;
-
-        if (!email || !analysisResult) {
-            return new Response(
-                JSON.stringify({ error: 'Email and analysis result are required' }),
-                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-        }
-
-        // 이메일 유효성 검사
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            return new Response(
-                JSON.stringify({ error: 'Invalid email address' }),
-                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-        }
-
-        // 이메일 HTML 생성
-        const htmlContent = generateEmailHTML(analysisResult);
-
-        // 첨부 파일 제거 (텍스트 리포트만 전송)
-
-        // Resend API 호출
-        const resendResponse = await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                from: '헤어디렉터 <noreply@hairdirector.site>',
-                to: [email],
-                subject: `[헤어디렉터] AI 헤어스타일 분석 리포트 - ${analysisResult.faceShapeKo}`,
-                html: htmlContent,
-            }),
+    // 5. 이메일 발송
+    try {
+        const data = await resend.emails.send({
+            from: 'Hair Director <onboarding@resend.dev>', // 테스트용 기본 도메인 (사용자가 도메인 설정 시 변경 필요)
+            to: [email],
+            subject: `[Hair Director] ${analysisResult.faceShapeKo} 얼굴형 분석 결과 리포트`,
+            html: htmlContent,
+            attachments: attachments.length > 0 ? attachments : undefined,
         });
 
-        if (!resendResponse.ok) {
-            const errorText = await resendResponse.text();
-            console.error('Resend API Error:', errorText);
-            return new Response(
-                JSON.stringify({ error: 'Failed to send email', details: errorText }),
-                { status: resendResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-        }
-
-        const resendData = await resendResponse.json() as { id: string };
-
-        return new Response(
-            JSON.stringify({
-                success: true,
-                messageId: resendData.id,
-                message: '이메일이 성공적으로 전송되었습니다.'
-            }),
-            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-
-    } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        console.error('Email send error:', error);
-        return new Response(
-            JSON.stringify({ error: 'Server error', message: errorMessage }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        return new Response(JSON.stringify({ success: true, messageId: data.data?.id }), {
+            headers: { 'Content-Type': 'application/json' },
+        });
+    } catch (error: any) {
+        console.error('Resend API Error:', error);
+        return new Response(JSON.stringify({
+            success: false,
+            error: error.message || '이메일 전송 중 오류가 발생했습니다.'
+        }), { status: 500 });
     }
 };

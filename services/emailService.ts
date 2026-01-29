@@ -22,7 +22,8 @@ interface ApiResponse {
  */
 export async function sendAnalysisReport(
     email: string,
-    analysisResult: FaceAnalysisResult
+    analysisResult: FaceAnalysisResult,
+    resultImage?: string // [추가] 결과 이미지 (Base64)
 ): Promise<SendReportResponse> {
     try {
         const response = await fetch('/api/email/send-report', {
@@ -33,6 +34,7 @@ export async function sendAnalysisReport(
             body: JSON.stringify({
                 email,
                 analysisResult,
+                resultImage, // 이미지 데이터 전달
             }),
         });
 
