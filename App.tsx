@@ -42,7 +42,7 @@ const App: React.FC = () => {
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [resultImage, setResultImage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'home' | 'history' | 'saved'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'history' | 'saved' | 'report'>('home');
   const [isDragging, setIsDragging] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
@@ -474,6 +474,7 @@ const App: React.FC = () => {
       setIsPremium(false);
 
       setState(AppState.COMPLETED);
+      setActiveTab('report'); // 분석 완료 시 자동으로 결과 탭으로 이동
     } catch (error: any) {
       console.error("Analysis/Generation failed:", error);
 
@@ -566,8 +567,9 @@ const App: React.FC = () => {
       );
     }
 
-    // 1. 통합 결과 화면 (분석 결과 + 3x3 그리드)
-    if (state === AppState.COMPLETED && resultImage && analysisResult) {
+    // 1. 통합 결과 화면 (분석 결과 + 3x3 그리드) 또는 'report' 탭 활성화 시
+    // activeTab === 'report'일 때도 이 화면을 보여주도록 조건 추가
+    if ((state === AppState.COMPLETED || activeTab === 'report') && resultImage && analysisResult) {
       return (
         <AnalysisResultView
           analysisResult={analysisResult}
