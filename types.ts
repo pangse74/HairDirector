@@ -65,6 +65,8 @@ export interface HistoryItem {
   date: string;
   originalImage: string;
   resultImage: string;
+  originalThumbnail?: string;  // 리스트용 썸네일
+  resultThumbnail?: string;    // 리스트용 썸네일
   faceAnalysis?: {
     faceShape: string;
     upperRatio: number;
@@ -72,6 +74,7 @@ export interface HistoryItem {
     lowerRatio: number;
     features: string[];
   };
+  fullAnalysisResult?: FaceAnalysisResult;  // 전체 분석 결과 (리포트 보기용)
   recommendedStyles: string[];
   liked: boolean;
 }

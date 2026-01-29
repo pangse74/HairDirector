@@ -322,14 +322,21 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onSelectItem }) => {
                     {history.map((item) => (
                         <div
                             key={item.id}
-                            onClick={() => setSelectedItem(item)}
+                            onClick={() => {
+                                // 전체 분석 결과가 있으면 리포트 페이지로, 없으면 기존 상세보기
+                                if (item.fullAnalysisResult && onSelectItem) {
+                                    onSelectItem(item);
+                                } else {
+                                    setSelectedItem(item);
+                                }
+                            }}
                             className="glass-card-dark p-4 cursor-pointer hover:bg-white/10 transition-all group"
                         >
                             <div className="flex gap-4">
                                 {/* 썸네일 */}
                                 <div className="relative">
                                     <img
-                                        src={item.resultImage}
+                                        src={item.resultThumbnail || item.resultImage}
                                         alt="결과"
                                         className="w-20 h-20 rounded-xl object-cover"
                                     />

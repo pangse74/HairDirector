@@ -5,7 +5,7 @@ import { SavedView } from './components/SavedView';
 import { AnalysisResultView } from './components/AnalysisResultView';
 import { generateHairstyleGrid, analyzeFace } from './services/geminiService';
 import { addHistoryItem, saveStyle } from './services/storageService';
-import { AppState, FaceAnalysisResult } from './types';
+import { AppState, FaceAnalysisResult, HistoryItem } from './types';
 import { HAIRSTYLE_DETAILS, HairstyleDetail } from './services/hairstyleData';
 import { StyleDetailPanel } from './components/StyleDetailPanel';
 import { VideoConsultingModal } from './components/VideoConsultingModal';
@@ -57,6 +57,7 @@ const App: React.FC = () => {
   const [isPremium, setIsPremium] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null); // 결제 시 입력한 이메일
+  const [selectedHistoryItem, setSelectedHistoryItem] = useState<HistoryItem | null>(null); // 히스토리에서 선택한 아이템
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -388,6 +389,7 @@ const App: React.FC = () => {
             lowerRatio: analysis.lowerRatio,
             features: analysis.features.map(f => f.nameKo)
           },
+          fullAnalysisResult: analysis,  // 전체 분석 결과 저장
           recommendedStyles: styleNames,
           liked: false
         });
@@ -490,6 +492,21 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
+    // 0. 히스토리에서 선택한 아이템 보기
+    if (selectedHistoryItem && selectedHistoryItem.fullAnalysisResult) {
+      return (
+        <AnalysisResultView
+          analysisResult={selectedHistoryItem.fullAnalysisResult}
+          originalImage={selectedHistoryItem.originalImage}
+          resultImage={selectedHistoryItem.resultImage}
+          onReset={() => setSelectedHistoryItem(null)}
+          onStyleClick={handleStyleClick}
+          styles={selectedHistoryItem.recommendedStyles}
+          userEmail={null}
+        />
+      );
+    }
+
     // 1. 통합 결과 화면 (분석 결과 + 3x3 그리드)
     if (state === AppState.COMPLETED && resultImage && analysisResult) {
       return (
@@ -767,7 +784,7 @@ const App: React.FC = () => {
           {/* 히스토리 탭 */}
           {activeTab === 'history' && (
             <div className="w-full mt-6">
-              <HistoryView />
+              <HistoryView onSelectItem={(item) => setSelectedHistoryItem(item)} />
             </div>
           )}
 

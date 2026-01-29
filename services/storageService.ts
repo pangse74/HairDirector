@@ -2,13 +2,14 @@ import { HistoryItem, SavedStyle, StyleCategory } from '../types';
 
 const HISTORY_KEY = 'hairfit_history';
 const SAVED_KEY = 'hairfit_saved';
-const MAX_HISTORY_ITEMS = 10; // 최대 히스토리 개수 제한
-const THUMBNAIL_MAX_SIZE = 200; // 썸네일 최대 크기 (픽셀)
+const MAX_HISTORY_ITEMS = 5; // 최대 히스토리 개수 제한 (고해상도 저장으로 인해 줄임)
+const IMAGE_MAX_SIZE = 1200; // 이미지 최대 크기 (픽셀) - 고해상도 유지
+const THUMBNAIL_SIZE = 300; // 리스트용 썸네일 크기
 
 // ==================== 이미지 압축 유틸리티 ====================
 
-// 이미지를 작은 썸네일로 압축
-export const compressImage = (base64Image: string, maxSize: number = THUMBNAIL_MAX_SIZE): Promise<string> => {
+// 이미지 압축 (고품질 유지)
+export const compressImage = (base64Image: string, maxSize: number = IMAGE_MAX_SIZE, quality: number = 0.92): Promise<string> => {
     return new Promise((resolve) => {
         const img = new Image();
         img.onload = () => {
@@ -35,13 +36,47 @@ export const compressImage = (base64Image: string, maxSize: number = THUMBNAIL_M
             canvas.height = height;
             ctx.drawImage(img, 0, 0, width, height);
 
-            // JPEG 60% 품질로 압축
-            resolve(canvas.toDataURL('image/jpeg', 0.6));
+            // PNG로 저장하여 품질 손실 방지 (또는 고품질 JPEG)
+            resolve(canvas.toDataURL('image/png'));
         };
         img.onerror = () => {
-            // 오류 시 빈 이미지 반환
-            resolve('');
+            // 오류 시 원본 반환
+            resolve(base64Image);
         };
+        img.src = base64Image;
+    });
+};
+
+// 썸네일 생성 (리스트용)
+export const createThumbnail = (base64Image: string): Promise<string> => {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d')!;
+
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+                if (width > THUMBNAIL_SIZE) {
+                    height = Math.round((height * THUMBNAIL_SIZE) / width);
+                    width = THUMBNAIL_SIZE;
+                }
+            } else {
+                if (height > THUMBNAIL_SIZE) {
+                    width = Math.round((width * THUMBNAIL_SIZE) / height);
+                    height = THUMBNAIL_SIZE;
+                }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            ctx.drawImage(img, 0, 0, width, height);
+
+            resolve(canvas.toDataURL('image/jpeg', 0.8));
+        };
+        img.onerror = () => resolve(base64Image);
         img.src = base64Image;
     });
 };
@@ -58,33 +93,39 @@ export const getHistory = (): HistoryItem[] => {
     }
 };
 
-// 히스토리 아이템 추가 (이미지 압축 포함)
+// 히스토리 아이템 추가 (고해상도 이미지 + 썸네일)
 export const addHistoryItem = async (item: Omit<HistoryItem, 'id' | 'date'>): Promise<HistoryItem> => {
     try {
-        // 이미지 압축
-        const compressedOriginal = await compressImage(item.originalImage, THUMBNAIL_MAX_SIZE);
-        const compressedResult = await compressImage(item.resultImage, THUMBNAIL_MAX_SIZE);
+        // 고해상도 이미지 유지 (약간의 압축만)
+        const highQualityOriginal = await compressImage(item.originalImage, IMAGE_MAX_SIZE);
+        const highQualityResult = await compressImage(item.resultImage, IMAGE_MAX_SIZE);
+
+        // 리스트용 썸네일 생성
+        const originalThumbnail = await createThumbnail(item.originalImage);
+        const resultThumbnail = await createThumbnail(item.resultImage);
 
         const history = getHistory();
         const newItem: HistoryItem = {
             ...item,
-            originalImage: compressedOriginal,
-            resultImage: compressedResult,
+            originalImage: highQualityOriginal,
+            resultImage: highQualityResult,
+            originalThumbnail,
+            resultThumbnail,
             id: generateId(),
             date: new Date().toISOString(),
         };
 
         history.unshift(newItem);
 
-        // 최대 개수 제한
+        // 최대 개수 제한 (고해상도라 개수 줄임)
         const limitedHistory = history.slice(0, MAX_HISTORY_ITEMS);
 
         try {
             localStorage.setItem(HISTORY_KEY, JSON.stringify(limitedHistory));
         } catch (e) {
-            // 여전히 용량 초과시 더 줄임
+            // 용량 초과시 오래된 항목 삭제
             console.warn('Storage quota exceeded, reducing history...');
-            const reducedHistory = limitedHistory.slice(0, 5);
+            const reducedHistory = limitedHistory.slice(0, 3);
             localStorage.setItem(HISTORY_KEY, JSON.stringify(reducedHistory));
         }
 
