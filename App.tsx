@@ -739,13 +739,46 @@ const App: React.FC = () => {
                       <p className="text-xs text-red-200 mb-2">
                         결제 정보(이메일 등)와 함께 아래 버튼을 눌러주세요.
                       </p>
-                      <a
-                        href="mailto:1974mds@naver.com?subject=[헤어디렉터] 분석 실패 환불 요청&body=결제일: (오늘 날짜)\n결제 이메일: \n이유: 시스템 분석 오류로 인한 자동 환불 요청"
-                        className="block w-full text-center py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-bold transition-colors"
-                      >
-                        <i className="fas fa-envelope mr-2"></i>
-                        환불 요청 이메일 보내기
-                      </a>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={async () => {
+                            if (!confirm('정말 환불 요청 메일을 보내시겠습니까?')) return;
+
+                            const btn = document.getElementById('refund-btn');
+                            if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>전송 중...';
+
+                            try {
+                              const res = await fetch('/api/email/send-refund', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  userEmail: userEmail || 'unknown@user.com', // 결제 시 저장된 이메일 또는 기본값
+                                  reason: '시스템 분석 오류로 인한 자동 환불 요청',
+                                  timestamp: new Date().toLocaleString(),
+                                  errorDetail: errorMessage
+                                })
+                              });
+
+                              if (res.ok) {
+                                alert('환불 요청이 정상적으로 접수되었습니다. \n빠른 시일 내에 처리해 드리겠습니다.');
+                              } else {
+                                const data = await res.json() as any;
+                                alert(`전송 실패: ${data.error || '알 수 없는 오류'}`);
+                              }
+                            } catch (e) {
+                              alert('전송 중 오류가 발생했습니다.');
+                              console.error(e);
+                            } finally {
+                              if (btn) btn.innerHTML = '<i class="fas fa-envelope mr-2"></i>환불 요청 이메일 보내기';
+                            }
+                          }}
+                          id="refund-btn"
+                          className="block w-full text-center py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-bold transition-colors"
+                        >
+                          <i className="fas fa-envelope mr-2"></i>
+                          환불 요청 이메일 보내기
+                        </button>
+                      </div>
                     </div>
                   )}
 
