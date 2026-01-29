@@ -1,10 +1,10 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { LoadingOverlay } from './components/LoadingOverlay';
-import { HistoryView } from './components/HistoryView';
+
 import { SavedView } from './components/SavedView';
 import { AnalysisResultView } from './components/AnalysisResultView';
 import { generateHairstyleGrid, analyzeFace } from './services/geminiService';
-import { addHistoryItem, saveStyle } from './services/storageService';
+import { saveStyle } from './services/storageService';
 import { AppState, FaceAnalysisResult, HistoryItem } from './types';
 import { HAIRSTYLE_DETAILS, HairstyleDetail } from './services/hairstyleData';
 import { StyleDetailPanel } from './components/StyleDetailPanel';
@@ -62,7 +62,7 @@ const App: React.FC = () => {
   const [isPremium, setIsPremium] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null); // 결제 시 입력한 이메일
-  const [selectedHistoryItem, setSelectedHistoryItem] = useState<HistoryItem | null>(null); // 히스토리에서 선택한 아이템
+
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -538,20 +538,7 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
-    // 0. 히스토리에서 선택한 아이템 보기
-    if (selectedHistoryItem && selectedHistoryItem.fullAnalysisResult) {
-      return (
-        <AnalysisResultView
-          analysisResult={selectedHistoryItem.fullAnalysisResult}
-          originalImage={selectedHistoryItem.originalImage}
-          resultImage={selectedHistoryItem.resultImage}
-          onReset={() => setSelectedHistoryItem(null)}
-          onStyleClick={handleStyleClick}
-          styles={selectedHistoryItem.recommendedStyles}
-          userEmail={null}
-        />
-      );
-    }
+
 
     // 1. 통합 결과 화면 (분석 결과 + 3x3 그리드) 또는 'report' 탭 활성화 시
     // activeTab === 'report'일 때도 이 화면을 보여주도록 조건 추가
