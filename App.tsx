@@ -56,6 +56,7 @@ const App: React.FC = () => {
   const [selectedVideo, setSelectedVideo] = useState<{ videoId: string; title: string } | null>(null);
   const [isPremium, setIsPremium] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null); // 결제 시 입력한 이메일
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -84,7 +85,14 @@ const App: React.FC = () => {
 
     // [자동 실행 로직] 결제 성공 후 돌아왔을 때
     if (paymentResult?.status === 'success') {
-      savePremiumStatus(undefined, paymentResult.checkoutId);
+      // 백업된 이메일 복구
+      const backupEmail = sessionStorage.getItem('hairfit_backup_email');
+      if (backupEmail) {
+        setUserEmail(backupEmail);
+        sessionStorage.removeItem('hairfit_backup_email');
+      }
+
+      savePremiumStatus(backupEmail || undefined, paymentResult.checkoutId);
       setIsPremium(true);
       // alert('결제가 완료되었습니다.'); // 자동 실행을 위해 알림 제거 혹은 유지 (사용자 경험 판단)
 
@@ -492,6 +500,7 @@ const App: React.FC = () => {
           onReset={handleReset}
           onStyleClick={handleStyleClick}
           styles={recommendedStyles}
+          userEmail={userEmail}
         />
       );
     }

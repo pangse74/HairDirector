@@ -28,6 +28,11 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ onClose, onSuccess, 
                 sessionStorage.setItem('hairfit_backup_image', currentImage);
             }
 
+            // [추가] 이메일 백업 (결제 완료 후 리포트 전송용)
+            if (email) {
+                sessionStorage.setItem('hairfit_backup_email', email);
+            }
+
             const session = await createCheckoutSession(email || undefined);
 
             // Polar.sh 체크아웃 페이지로 리다이렉트

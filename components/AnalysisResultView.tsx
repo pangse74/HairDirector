@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { FaceAnalysisResult, FaceShape } from '../types';
+import { sendAnalysisReport, isValidEmail } from '../services/emailService';
 
 interface Props {
   analysisResult: FaceAnalysisResult;
@@ -8,6 +9,7 @@ interface Props {
   onReset: () => void;
   onStyleClick?: (styleId: string) => void;
   styles?: string[];  // 추천 스타일 목록
+  userEmail?: string | null;  // 결제 시 입력한 이메일
 }
 
 // 얼굴형 아이콘 매핑
@@ -124,12 +126,20 @@ export const AnalysisResultView: React.FC<Props> = ({
   onReset,
   onStyleClick,
   styles,
+  userEmail,
 }) => {
   const reportRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const summaryCardRef = useRef<HTMLDivElement>(null);  // 분석 요약 카드 ref
   const [autoSaveComplete, setAutoSaveComplete] = useState(false);
   const [selectedStyle, setSelectedStyle] = useState<number | null>(null);
+
+  // 이메일 전송 상태
+  const [emailInput, setEmailInput] = useState(userEmail || '');
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [autoEmailSent, setAutoEmailSent] = useState(false); // 자동 전송 완료 여부
 
   const {
     faceShape,
@@ -236,6 +246,41 @@ export const AnalysisResultView: React.FC<Props> = ({
     }
   }, [resultImage, autoSaveComplete]);
 
+  // 결제 시 입력한 이메일이 있으면 자동으로 리포트 전송
+  useEffect(() => {
+    if (userEmail && resultImage && !autoEmailSent && !emailSent) {
+      const autoSendEmail = async () => {
+        console.log('📧 결제 이메일로 자동 리포트 전송 시작:', userEmail);
+        setEmailSending(true);
+
+        try {
+          const response = await sendAnalysisReport(
+            userEmail,
+            analysisResult,
+            resultImage
+          );
+
+          if (response.success) {
+            setEmailSent(true);
+            console.log('✅ 이메일 자동 전송 완료');
+          } else {
+            console.error('❌ 이메일 전송 실패:', response.error);
+            setEmailError(response.error || '이메일 전송에 실패했습니다.');
+          }
+        } catch (error) {
+          console.error('❌ 이메일 전송 오류:', error);
+        } finally {
+          setEmailSending(false);
+          setAutoEmailSent(true);
+        }
+      };
+
+      // 자동 저장 완료 후 이메일 전송 (2초 후)
+      const timer = setTimeout(autoSendEmail, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [userEmail, resultImage, autoEmailSent, emailSent, analysisResult]);
+
   // 수동 다운로드 핸들러
   const handleDownload = async () => {
     if (!resultImage) return;
@@ -272,6 +317,42 @@ ${stylingTips.slice(0, 3).map(t => `- ${t}`).join('\n')}
     } catch (err) {
       console.error('Failed to copy report:', err);
       alert('복사에 실패했습니다.');
+    }
+  };
+
+  // 이메일 전송 핸들러
+  const handleSendEmail = async () => {
+    if (!emailInput.trim()) {
+      setEmailError('이메일 주소를 입력해주세요.');
+      return;
+    }
+
+    if (!isValidEmail(emailInput.trim())) {
+      setEmailError('올바른 이메일 형식을 입력해주세요.');
+      return;
+    }
+
+    setEmailSending(true);
+    setEmailError(null);
+
+    try {
+      const response = await sendAnalysisReport(
+        emailInput.trim(),
+        analysisResult,
+        resultImage
+      );
+
+      if (response.success) {
+        setEmailSent(true);
+        setEmailInput('');
+      } else {
+        setEmailError(response.error || '이메일 전송에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('Email send failed:', error);
+      setEmailError('이메일 전송 중 오류가 발생했습니다.');
+    } finally {
+      setEmailSending(false);
     }
   };
 
@@ -605,6 +686,63 @@ ${stylingTips.slice(0, 3).map(t => `- ${t}`).join('\n')}
 
           {/* 하단 버튼 */}
           <div className="pt-4 space-y-3">
+            {/* 이메일로 리포트 받기 */}
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/20">
+              <div className="flex items-center gap-2 mb-3">
+                <i className="fas fa-envelope text-cyan-400"></i>
+                <span className="text-white font-bold text-sm">이메일로 리포트 받기</span>
+              </div>
+
+              {emailSent ? (
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-green-500/20 border border-green-500/30">
+                  <i className="fas fa-check-circle text-green-400"></i>
+                  <span className="text-green-300 text-sm">리포트가 이메일로 전송되었습니다!</span>
+                </div>
+              ) : (
+                <>
+                  <div className="flex gap-2">
+                    <input
+                      type="email"
+                      value={emailInput}
+                      onChange={(e) => {
+                        setEmailInput(e.target.value);
+                        setEmailError(null);
+                      }}
+                      placeholder="이메일 주소 입력"
+                      className="flex-1 px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 text-sm"
+                      disabled={emailSending}
+                    />
+                    <button
+                      onClick={handleSendEmail}
+                      disabled={emailSending}
+                      className="px-5 py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold text-sm hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {emailSending ? (
+                        <>
+                          <i className="fas fa-spinner fa-spin"></i>
+                          전송중
+                        </>
+                      ) : (
+                        <>
+                          <i className="fas fa-paper-plane"></i>
+                          전송
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  {emailError && (
+                    <div className="mt-2 text-red-400 text-xs flex items-center gap-1">
+                      <i className="fas fa-exclamation-circle"></i>
+                      {emailError}
+                    </div>
+                  )}
+                  <p className="mt-2 text-gray-500 text-xs">
+                    분석 결과와 추천 스타일을 이메일로 받아보세요.
+                  </p>
+                </>
+              )}
+            </div>
+
             {/* [추가] 텍스트 복사 버튼 */}
             <button
               onClick={handleCopyReport}
