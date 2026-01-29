@@ -127,7 +127,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'Hair Director <onboarding@resend.dev>', // 테스트용 기본 도메인
+        from: 'Hair Director <noreply@hairdirector.site>',
         to: [email],
         subject: `[Hair Director] ${analysisResult.faceShapeKo} 얼굴형 분석 결과 리포트`,
         html: htmlContent,

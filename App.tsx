@@ -464,15 +464,40 @@ const App: React.FC = () => {
     } catch (error: any) {
       console.error("Analysis/Generation failed:", error);
 
-      // [자동 환불 로직] 분석 실패 시 환불 처리
+      const errorStr = typeof error === 'string' ? error : JSON.stringify(error);
+
+      // [자동 환불 로직] 결제 후 분석 실패 시 자동으로 환불 처리 및 이메일 발송
       const currentStatus = getPremiumStatus();
       if (currentStatus.isPremium && currentStatus.checkoutId) {
-        setErrorMessage(`분석에 실패했습니다. (Error: ${error.message || 'Unknown'}) \n\n시스템 오류로 인해 분석이 완료되지 않았습니다.\n아래 [환불 요청] 버튼을 눌러주시면 즉시 전액 환불해 드립니다.`);
+        // 자동 환불 이메일 발송
+        try {
+          const refundResponse = await fetch('/api/email/send-refund', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userEmail: userEmail || currentStatus.email || 'unknown@user.com',
+              reason: '시스템 오류로 인한 자동 환불 (Gemini API 실패)',
+              timestamp: new Date().toLocaleString('ko-KR'),
+              errorDetail: error.message || errorStr
+            })
+          });
+
+          const refundData = await refundResponse.json() as { success: boolean; userNotified?: boolean };
+
+          if (refundData.success && refundData.userNotified) {
+            setErrorMessage(`분석에 실패했습니다.\n\n시스템 오류로 인해 결제 금액이 자동으로 환불 처리되었습니다.\n환불 확인 이메일이 ${userEmail || currentStatus.email}로 발송되었습니다.\n\n불편을 드려 죄송합니다.`);
+          } else if (refundData.success) {
+            setErrorMessage(`분석에 실패했습니다.\n\n시스템 오류로 인해 결제 금액이 자동으로 환불 처리되었습니다.\n(환불 처리 완료)\n\n불편을 드려 죄송합니다.`);
+          } else {
+            setErrorMessage(`분석에 실패했습니다. (Error: ${error.message || 'Unknown'})\n\n환불 처리 중 문제가 발생했습니다.\n관리자 이메일(1974mds@naver.com)로 문의해 주세요.`);
+          }
+        } catch (refundError) {
+          console.error('자동 환불 처리 실패:', refundError);
+          setErrorMessage(`분석에 실패했습니다. (Error: ${error.message || 'Unknown'})\n\n자동 환불 처리 중 오류가 발생했습니다.\n관리자 이메일(1974mds@naver.com)로 문의해 주세요.`);
+        }
       } else {
         setErrorMessage(error.message || "처리 중 오류가 발생했습니다.");
       }
-
-      const errorStr = typeof error === 'string' ? error : JSON.stringify(error);
 
       if (errorStr.includes("Requested entity was not found") || errorStr.includes("PERMISSION_DENIED") || errorStr.includes("403")) {
         setErrorMessage("이 기능을 사용하려면 유료 결제가 활성화된 API 키가 필요합니다.");
@@ -514,41 +539,6 @@ const App: React.FC = () => {
       setErrorMessage(null);
       setAnalysisResult(null);
       setRecommendedStyles([]);
-    }
-  };
-
-  // 환불 요청 이메일 발송 핸들러
-  const handleSendRefundEmail = async (errorMsg: string = '테스트 환불 요청') => {
-    if (!confirm('정말 환불 요청 메일을 보내시겠습니까?')) return;
-
-    // 버튼 로딩 상태 표시를 위한 간단한 처리 (ID 기반)
-    const btn = document.getElementById('refund-btn');
-    const originalText = btn ? btn.innerHTML : '';
-    if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>전송 중...';
-
-    try {
-      const res = await fetch('/api/email/send-refund', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userEmail: userEmail || 'unknown@user.com',
-          reason: '시스템 분석 오류로 인한 자동 환불 요청 (또는 테스트)',
-          timestamp: new Date().toLocaleString(),
-          errorDetail: errorMsg
-        })
-      });
-
-      if (res.ok) {
-        alert('환불 요청이 정상적으로 접수되었습니다. \n관리자에게 메일이 발송되었습니다.');
-      } else {
-        const data = await res.json() as any;
-        alert(`전송 실패: ${data.error || '알 수 없는 오류'}`);
-      }
-    } catch (e) {
-      alert('전송 중 오류가 발생했습니다.');
-      console.error(e);
-    } finally {
-      if (btn) btn.innerHTML = originalText || '<i class="fas fa-envelope mr-2"></i>환불 요청 이메일 보내기';
     }
   };
 
@@ -773,25 +763,16 @@ const App: React.FC = () => {
                 <div className="w-full max-w-md p-4 mb-6 rounded-2xl bg-red-500/10 border border-red-500/30">
                   <div className="flex items-center gap-3 text-red-400 mb-2">
                     <i className="fas fa-exclamation-circle"></i>
-                    <span className="font-bold">오류 발생</span>
+                    <span className="font-bold">{errorMessage.includes("환불") ? "자동 환불 완료" : "오류 발생"}</span>
                   </div>
                   <p className="text-red-300 text-sm whitespace-pre-wrap">{errorMessage}</p>
 
-                  {/* 환불 안내 링크 추가 */}
+                  {/* 환불 완료 안내 (자동 환불된 경우) */}
                   {errorMessage?.includes("환불") && (
-                    <div className="mt-4 p-3 bg-red-500/20 rounded-xl border border-red-500/30">
-                      <p className="text-xs text-red-200 mb-2">
-                        결제 정보(이메일 등)와 함께 아래 버튼을 눌러주세요.
-                      </p>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleSendRefundEmail(errorMessage || '알 수 없는 오류')}
-                          id="refund-btn"
-                          className="block w-full text-center py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-bold transition-colors"
-                        >
-                          <i className="fas fa-envelope mr-2"></i>
-                          환불 요청 이메일 보내기
-                        </button>
+                    <div className="mt-4 p-3 bg-green-500/20 rounded-xl border border-green-500/30">
+                      <div className="flex items-center gap-2 text-green-400 text-sm">
+                        <i className="fas fa-check-circle"></i>
+                        <span>결제 금액이 자동으로 환불 처리되었습니다.</span>
                       </div>
                     </div>
                   )}
