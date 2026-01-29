@@ -1,55 +1,52 @@
 
-import { Resend } from 'resend';
-import { Buffer } from 'node:buffer'; // Cloudflare Workers Node.js compatibility layer
+// import { Resend } from 'resend'; // 제거: Node.js 의존성 문제 해결을 위해 direct fetch 사용
 
 interface Env {
-    RESEND_API_KEY: string;
+  RESEND_API_KEY: string;
 }
 
 interface RequestBody {
-    email: string;
-    analysisResult: {
-        faceShapeKo: string;
-        skinToneKo: string;
-        features: { nameKo: string }[];
-        recommendations: { name: string }[];
-        stylingTips?: string[];
-    };
-    resultImage?: string; // Base64 string
+  email: string;
+  analysisResult: {
+    faceShapeKo: string;
+    skinToneKo: string;
+    features: { nameKo: string }[];
+    recommendations: { name: string }[];
+    stylingTips?: string[];
+  };
+  resultImage?: string; // Base64 string
 }
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
-    const { request, env } = context;
+  const { request, env } = context;
 
-    // 1. API 키 확인
-    if (!env.RESEND_API_KEY) {
-        return new Response(JSON.stringify({
-            success: false,
-            error: '이메일 서버 설정 오류: RESEND_API_KEY가 없습니다.'
-        }), { status: 500 });
-    }
+  // 1. API 키 확인
+  if (!env.RESEND_API_KEY) {
+    return new Response(JSON.stringify({
+      success: false,
+      error: '이메일 서버 설정 오류: RESEND_API_KEY가 없습니다.'
+    }), { status: 500 });
+  }
 
-    // 2. 요청 데이터 파싱
-    let body: RequestBody;
-    try {
-        body = await request.json() as RequestBody;
-    } catch (e) {
-        return new Response(JSON.stringify({ success: false, error: '잘못된 요청 형식입니다.' }), { status: 400 });
-    }
+  // 2. 요청 데이터 파싱
+  let body: RequestBody;
+  try {
+    body = await request.json() as RequestBody;
+  } catch (e) {
+    return new Response(JSON.stringify({ success: false, error: '잘못된 요청 형식입니다.' }), { status: 400 });
+  }
 
-    const { email, analysisResult, resultImage } = body;
+  const { email, analysisResult, resultImage } = body;
 
-    if (!email || !analysisResult) {
-        return new Response(JSON.stringify({ success: false, error: '이메일 주소와 분석 결과는 필수입니다.' }), { status: 400 });
-    }
+  if (!email || !analysisResult) {
+    return new Response(JSON.stringify({ success: false, error: '이메일 주소와 분석 결과는 필수입니다.' }), { status: 400 });
+  }
 
-    const resend = new Resend(env.RESEND_API_KEY);
+  // 3. 이메일 템플릿 (HTML) 생성
+  const bestStyles = analysisResult.recommendations.slice(0, 5).map(r => r.name).join(', ');
+  const features = analysisResult.features.map(f => f.nameKo).join(', ');
 
-    // 3. 이메일 템플릿 (HTML) 생성
-    const bestStyles = analysisResult.recommendations.slice(0, 5).map(r => r.name).join(', ');
-    const features = analysisResult.features.map(f => f.nameKo).join(', ');
-
-    const htmlContent = `
+  const htmlContent = `
     <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
       <div style="background-color: #1a1a2e; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
         <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Hair Director</h1>
@@ -95,41 +92,59 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     </div>
   `;
 
-    // 4. 첨부파일 처리
-    const attachments: any[] = [];
-    if (resultImage) {
-        try {
-            // Base64 문자열에서 헤더 제거 (data:image/png;base64, 부분)
-            const base64Data = resultImage.split(';base64,').pop() || resultImage;
-            const buffer = Buffer.from(base64Data, 'base64');
-
-            attachments.push({
-                filename: 'hair_analysis_result.jpg',
-                content: buffer,
-            });
-        } catch (e) {
-            console.error('이미지 첨부 처리 중 오류:', e);
-        }
-    }
-
-    // 5. 이메일 발송
+  // 4. 첨부파일 처리
+  const attachments: any[] = [];
+  if (resultImage) {
     try {
-        const data = await resend.emails.send({
-            from: 'Hair Director <onboarding@resend.dev>', // 테스트용 기본 도메인 (사용자가 도메인 설정 시 변경 필요)
-            to: [email],
-            subject: `[Hair Director] ${analysisResult.faceShapeKo} 얼굴형 분석 결과 리포트`,
-            html: htmlContent,
-            attachments: attachments.length > 0 ? attachments : undefined,
-        });
+      // Base64 문자열에서 헤더 제거 (data:image/png;base64, 부분)
+      // Resend API (direct fetch)에서는 Base64 문자열 그대로 'content' 필드에 넣으면 됩니다.
+      const base64Content = resultImage.split(';base64,').pop() || resultImage;
 
-        return new Response(JSON.stringify({ success: true, messageId: data.data?.id }), {
-            headers: { 'Content-Type': 'application/json' },
-        });
-    } catch (error: any) {
-        console.error('Resend API Error:', error);
-        return new Response(JSON.stringify({
-            success: false,
-            error: error.message || '이메일 전송 중 오류가 발생했습니다.'
-        }), { status: 500 });
+      attachments.push({
+        filename: 'hair_analysis_result.jpg',
+        content: base64Content, // Buffer 변환 없이 Base64 문자열 사용
+      });
+    } catch (e) {
+      console.error('이미지 첨부 처리 중 오류:', e);
     }
+  }
+
+  // 5. 이메일 발송 (fetch 사용)
+  try {
+    const resendResponse = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: 'Hair Director <onboarding@resend.dev>', // 테스트용 기본 도메인
+        to: [email],
+        subject: `[Hair Director] ${analysisResult.faceShapeKo} 얼굴형 분석 결과 리포트`,
+        html: htmlContent,
+        attachments: attachments.length > 0 ? attachments : undefined,
+      })
+    });
+
+    const responseData = await resendResponse.json() as { id?: string; error?: any };
+
+    if (!resendResponse.ok) {
+      console.error('Resend API Error:', responseData);
+      return new Response(JSON.stringify({
+        success: false,
+        error: `이메일 전송 실패: ${JSON.stringify(responseData)}`
+      }), { status: 500 });
+    }
+
+    return new Response(JSON.stringify({ success: true, messageId: responseData.id }), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+  } catch (error: any) {
+    console.error('Fetch Error:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: error.message || '이메일 전송 중 네트워크 오류가 발생했습니다.'
+    }), { status: 500 });
+  }
 };
