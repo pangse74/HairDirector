@@ -11,7 +11,7 @@ import { StyleDetailPanel } from './components/StyleDetailPanel';
 import { VideoConsultingModal } from './components/VideoConsultingModal';
 import { Footer } from './components/Footer';
 import { PaymentModal } from './components/PaymentModal';
-import { getPremiumStatus, savePremiumStatus, checkPaymentCallback, clearPremiumStatus } from './services/polarService';
+import { getPremiumStatus, savePremiumStatus, checkPaymentCallback, clearPremiumStatus, getCheckoutDetails } from './services/polarService';
 
 
 const QUOTES = [
@@ -49,7 +49,12 @@ const App: React.FC = () => {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
   const [randomQuote, setRandomQuote] = useState("");
-  const [selectedStyle, setSelectedStyle] = useState<HairstyleDetail | null>(null);
+  const [selectedStyle, setSelectedStyle] = useState<{
+    detail: HairstyleDetail;
+    resultImage?: string;
+    styleIndex?: number;
+    styleName?: string;
+  } | null>(null);
   // 새로운 상태: 분석 결과와 추천 스타일
   const [analysisResult, setAnalysisResult] = useState<FaceAnalysisResult | null>(null);
   const [recommendedStyles, setRecommendedStyles] = useState<string[]>([]);
@@ -86,28 +91,39 @@ const App: React.FC = () => {
 
     // [자동 실행 로직] 결제 성공 후 돌아왔을 때
     if (paymentResult?.status === 'success') {
-      // 백업된 이메일 복구
-      const backupEmail = sessionStorage.getItem('hairfit_backup_email');
-      if (backupEmail) {
-        setUserEmail(backupEmail);
-        sessionStorage.removeItem('hairfit_backup_email');
-      }
+      // Polar 체크아웃에서 이메일 가져오기
+      const fetchEmailAndContinue = async () => {
+        let customerEmail: string | null = null;
 
-      savePremiumStatus(backupEmail || undefined, paymentResult.checkoutId);
-      setIsPremium(true);
-      // alert('결제가 완료되었습니다.'); // 자동 실행을 위해 알림 제거 혹은 유지 (사용자 경험 판단)
+        if (paymentResult.checkoutId) {
+          try {
+            const checkoutDetails = await getCheckoutDetails(paymentResult.checkoutId);
+            customerEmail = checkoutDetails.email;
+            console.log('📧 결제 이메일 확인:', customerEmail);
+          } catch (e) {
+            console.error('이메일 조회 실패:', e);
+          }
+        }
 
-      // 백업된 이미지 복구
-      const backupImage = sessionStorage.getItem('hairfit_backup_image');
-      if (backupImage) {
-        console.log("🔄 결제 후 이미지 복구 및 자동 분석 시작");
-        setOriginalImage(backupImage);
-        setState(AppState.PREVIEW); // 프리뷰 상태로 전환 (필수)
-        sessionStorage.removeItem('hairfit_backup_image'); // 1회용 사용 후 삭제
+        if (customerEmail) {
+          setUserEmail(customerEmail);
+        }
 
-        // handleStartAnalysis 호출을 위한 플래그
-        sessionStorage.setItem('hairfit_auto_start', 'true');
-      }
+        savePremiumStatus(customerEmail || undefined, paymentResult.checkoutId);
+        setIsPremium(true);
+
+        // 백업된 이미지 복구
+        const backupImage = sessionStorage.getItem('hairfit_backup_image');
+        if (backupImage) {
+          console.log("🔄 결제 후 이미지 복구 및 자동 분석 시작");
+          setOriginalImage(backupImage);
+          setState(AppState.PREVIEW);
+          sessionStorage.removeItem('hairfit_backup_image');
+          sessionStorage.setItem('hairfit_auto_start', 'true');
+        }
+      };
+
+      fetchEmailAndContinue();
 
     } else if (paymentResult?.status === 'cancel') {
       alert('결제가 취소되었습니다.');
@@ -115,11 +131,16 @@ const App: React.FC = () => {
   }, []);
 
   // 스타일 클릭 핸들러
-  const handleStyleClick = (styleId: string) => {
+  const handleStyleClick = (styleId: string, styleIndex?: number, styleName?: string, gridImage?: string) => {
     // 도감에 없는 스타일이면 'default' 데이터를 사용 (Fallback)
     const detail = HAIRSTYLE_DETAILS[styleId] || HAIRSTYLE_DETAILS['default'];
     if (detail) {
-      setSelectedStyle(detail);
+      setSelectedStyle({
+        detail,
+        resultImage: gridImage || resultImage || undefined,
+        styleIndex,
+        styleName: styleName || detail.name,
+      });
     }
   };
 
@@ -812,8 +833,20 @@ const App: React.FC = () => {
       {/* 스타일 상세 패널 */}
       {selectedStyle && (
         <StyleDetailPanel
-          style={selectedStyle}
+          style={selectedStyle.detail}
+          resultImage={selectedStyle.resultImage}
+          styleIndex={selectedStyle.styleIndex}
+          styleName={selectedStyle.styleName}
           onClose={() => setSelectedStyle(null)}
+          onSave={(imageData, name) => {
+            saveStyle({
+              type: 'simulation',
+              category: 'cut',
+              title: name,
+              thumbnail: imageData,
+            });
+            alert(`"${name}" 스타일이 저장되었습니다! 🎉`);
+          }}
         />
       )}
 

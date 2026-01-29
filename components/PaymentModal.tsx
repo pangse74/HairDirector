@@ -8,7 +8,6 @@ interface PaymentModalProps {
 }
 
 export const PaymentModal: React.FC<PaymentModalProps> = ({ onClose, onSuccess, currentImage }) => {
-    const [email, setEmail] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -28,12 +27,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ onClose, onSuccess, 
                 sessionStorage.setItem('hairfit_backup_image', currentImage);
             }
 
-            // [추가] 이메일 백업 (결제 완료 후 리포트 전송용)
-            if (email) {
-                sessionStorage.setItem('hairfit_backup_email', email);
-            }
-
-            const session = await createCheckoutSession(email || undefined);
+            // Polar 체크아웃에서 이메일 입력받음
+            const session = await createCheckoutSession();
 
             // Polar.sh 체크아웃 페이지로 리다이렉트
             window.location.href = session.url;
@@ -111,20 +106,6 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ onClose, onSuccess, 
                             </li>
                         </ul>
                     </div>
-                </div>
-
-                {/* 이메일 입력 (선택) */}
-                <div className="px-6 pb-4">
-                    <label className="block text-gray-400 text-xs mb-2">
-                        이메일 (선택, 영수증 발송용)
-                    </label>
-                    <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="example@email.com"
-                        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-violet-500 transition-colors"
-                    />
                 </div>
 
                 {/* 약관 동의 */}

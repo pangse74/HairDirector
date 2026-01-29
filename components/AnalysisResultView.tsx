@@ -7,7 +7,7 @@ interface Props {
   originalImage: string;
   resultImage?: string;  // 3x3 그리드 이미지
   onReset: () => void;
-  onStyleClick?: (styleId: string) => void;
+  onStyleClick?: (styleId: string, styleIndex?: number, styleName?: string, gridImage?: string) => void;
   styles?: string[];  // 추천 스타일 목록
   userEmail?: string | null;  // 결제 시 입력한 이메일
 }
@@ -256,8 +256,7 @@ export const AnalysisResultView: React.FC<Props> = ({
         try {
           const response = await sendAnalysisReport(
             userEmail,
-            analysisResult,
-            resultImage
+            analysisResult
           );
 
           if (response.success) {
@@ -338,8 +337,7 @@ ${stylingTips.slice(0, 3).map(t => `- ${t}`).join('\n')}
     try {
       const response = await sendAnalysisReport(
         emailInput.trim(),
-        analysisResult,
-        resultImage
+        analysisResult
       );
 
       if (response.success) {
@@ -525,7 +523,7 @@ ${stylingTips.slice(0, 3).map(t => `- ${t}`).join('\n')}
                     key={index}
                     onClick={() => {
                       setSelectedStyle(index);
-                      onStyleClick?.(STYLE_ID_MAP[styleName] || 'default');
+                      onStyleClick?.(STYLE_ID_MAP[styleName] || 'default', index, styleName, resultImage);
                     }}
                     className={`p-3 rounded-xl border text-center transition-all ${selectedStyle === index
                       ? 'bg-violet-600/30 border-violet-500'
@@ -561,7 +559,7 @@ ${stylingTips.slice(0, 3).map(t => `- ${t}`).join('\n')}
                       key={index}
                       onClick={() => {
                         setSelectedStyle(index);
-                        onStyleClick?.(STYLE_ID_MAP[style] || 'default');
+                        onStyleClick?.(STYLE_ID_MAP[style] || 'default', index, style, resultImage);
                       }}
                       className="relative flex items-end justify-center hover:bg-white/10 transition-all"
                     >

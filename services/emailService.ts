@@ -22,8 +22,7 @@ interface ApiResponse {
  */
 export async function sendAnalysisReport(
     email: string,
-    analysisResult: FaceAnalysisResult,
-    resultImage?: string | null
+    analysisResult: FaceAnalysisResult
 ): Promise<SendReportResponse> {
     try {
         const response = await fetch('/api/email/send-report', {
@@ -34,7 +33,6 @@ export async function sendAnalysisReport(
             body: JSON.stringify({
                 email,
                 analysisResult,
-                resultImage: resultImage || undefined,
             }),
         });
 

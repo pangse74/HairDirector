@@ -23,8 +23,6 @@ interface AnalysisResult {
 interface RequestBody {
     email: string;
     analysisResult: AnalysisResult;
-    resultImage?: string; // base64 이미지 (선택)
-    originalImage?: string; // base64 원본 이미지 (선택)
 }
 
 // CORS 헤더
@@ -204,7 +202,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
         // 요청 본문 파싱
         const body = await request.json() as RequestBody;
-        const { email, analysisResult, resultImage } = body;
+        const { email, analysisResult } = body;
 
         if (!email || !analysisResult) {
             return new Response(
@@ -225,17 +223,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         // 이메일 HTML 생성
         const htmlContent = generateEmailHTML(analysisResult);
 
-        // 첨부 파일 준비 (결과 이미지가 있는 경우)
-        const attachments: Array<{ filename: string; content: string; content_type?: string }> = [];
-        if (resultImage) {
-            // base64 데이터에서 prefix 제거
-            const base64Data = resultImage.includes(',') ? resultImage.split(',')[1] : resultImage;
-            attachments.push({
-                filename: 'hairstyle-recommendations.png',
-                content: base64Data,
-                content_type: 'image/png'
-            });
-        }
+        // 첨부 파일 제거 (텍스트 리포트만 전송)
 
         // Resend API 호출
         const resendResponse = await fetch('https://api.resend.com/emails', {
@@ -249,7 +237,6 @@ export const onRequest: PagesFunction<Env> = async (context) => {
                 to: [email],
                 subject: `[헤어디렉터] AI 헤어스타일 분석 리포트 - ${analysisResult.faceShapeKo}`,
                 html: htmlContent,
-                ...(attachments.length > 0 && { attachments }),
             }),
         });
 

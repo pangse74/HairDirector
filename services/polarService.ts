@@ -16,6 +16,32 @@ export interface PremiumStatus {
 const PREMIUM_STORAGE_KEY = 'hairfit_premium_status';
 
 /**
+ * Polar.sh 체크아웃 상세 정보 조회 (이메일 가져오기용)
+ */
+export async function getCheckoutDetails(checkoutId: string): Promise<{ email: string | null; status: string }> {
+    try {
+        const response = await fetch('/api/checkout/details', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ checkoutId }),
+        });
+
+        if (!response.ok) {
+            console.error('Failed to get checkout details');
+            return { email: null, status: 'unknown' };
+        }
+
+        const data = await response.json() as { email: string | null; status: string };
+        return data;
+    } catch (error) {
+        console.error('Checkout details fetch failed:', error);
+        return { email: null, status: 'error' };
+    }
+}
+
+/**
  * Polar.sh 체크아웃 세션 생성
  */
 export async function createCheckoutSession(email?: string): Promise<CheckoutSession> {
