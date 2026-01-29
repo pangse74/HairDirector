@@ -517,6 +517,41 @@ const App: React.FC = () => {
     }
   };
 
+  // 환불 요청 이메일 발송 핸들러
+  const handleSendRefundEmail = async (errorMsg: string = '테스트 환불 요청') => {
+    if (!confirm('정말 환불 요청 메일을 보내시겠습니까?')) return;
+
+    // 버튼 로딩 상태 표시를 위한 간단한 처리 (ID 기반)
+    const btn = document.getElementById('refund-btn');
+    const originalText = btn ? btn.innerHTML : '';
+    if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>전송 중...';
+
+    try {
+      const res = await fetch('/api/email/send-refund', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userEmail: userEmail || 'unknown@user.com',
+          reason: '시스템 분석 오류로 인한 자동 환불 요청 (또는 테스트)',
+          timestamp: new Date().toLocaleString(),
+          errorDetail: errorMsg
+        })
+      });
+
+      if (res.ok) {
+        alert('환불 요청이 정상적으로 접수되었습니다. \n관리자에게 메일이 발송되었습니다.');
+      } else {
+        const data = await res.json() as any;
+        alert(`전송 실패: ${data.error || '알 수 없는 오류'}`);
+      }
+    } catch (e) {
+      alert('전송 중 오류가 발생했습니다.');
+      console.error(e);
+    } finally {
+      if (btn) btn.innerHTML = originalText || '<i class="fas fa-envelope mr-2"></i>환불 요청 이메일 보내기';
+    }
+  };
+
   // 영상 저장 핸들러
   const handleSaveVideo = (videoId: string, title: string) => {
     saveStyle({
@@ -669,6 +704,13 @@ const App: React.FC = () => {
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
             >
+              {/* [테스트용] 환불 이메일 발송 버튼 */}
+              <button
+                onClick={() => handleSendRefundEmail('사용자 요청에 의한 테스트 발송')}
+                className="mb-4 px-3 py-1 bg-red-500/20 text-red-300 text-xs rounded-full border border-red-500/30 hover:bg-red-500/30 transition-all"
+              >
+                <i className="fas fa-bug mr-1"></i> [Test] 환불 메일 발송 테스트
+              </button>
               {/* 전체 화면 드래그 오버레이 */}
               {isDragging && (
                 <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center pointer-events-none">
