@@ -20,7 +20,8 @@ export const StyleDetailPanel: React.FC<StyleDetailPanelProps> = ({
 }) => {
     const [croppedImage, setCroppedImage] = useState<string | null>(null);
     const [saved, setSaved] = useState(false);
-    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const panelRef = useRef<HTMLDivElement>(null);
+    const buttonGroupRef = useRef<HTMLDivElement>(null);
 
     // 3x3 그리드에서 특정 셀 이미지 추출
     useEffect(() => {
@@ -57,23 +58,52 @@ export const StyleDetailPanel: React.FC<StyleDetailPanelProps> = ({
         }
     }, [resultImage, styleIndex]);
 
-    // 저장 핸들러
+    // 저장 핸들러 (북마크)
     const handleSave = () => {
         if (croppedImage && onSave) {
-            onSave(croppedImage, styleName || style.name);
-            setSaved(true);
+            try {
+                onSave(croppedImage, styleName || style.name);
+                setSaved(true);
+            } catch (error) {
+                console.error("Save failed:", error);
+                alert("저장에 실패했습니다. 저장 공간을 확인해주세요.");
+            }
+
+        } else {
+            console.warn("Cannot save: No cropped image or onSave handler");
         }
     };
 
-    // 이미지 다운로드 핸들러
-    const handleDownload = () => {
-        if (croppedImage) {
+    // 전체 카드 다운로드 핸들러
+    const handleDownload = async () => {
+        if (!panelRef.current) return;
+
+        try {
+            const html2canvas = (await import('html2canvas')).default;
+
+            // 버튼 숨기기 (캡처 전)
+            if (buttonGroupRef.current) buttonGroupRef.current.style.visibility = 'hidden';
+
+            const canvas = await html2canvas(panelRef.current, {
+                backgroundColor: '#1a1a24', // 패널 배경색 유지
+                scale: 2, // 고해상도
+                useCORS: true,
+                logging: false,
+            });
+
+            // 버튼 다시 보이기
+            if (buttonGroupRef.current) buttonGroupRef.current.style.visibility = 'visible';
+
             const link = document.createElement('a');
-            link.href = croppedImage;
-            link.download = `헤어디렉터_${styleName || style.name}_${new Date().toISOString().split('T')[0]}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.download = `헤어디렉터_스타일카드_${styleName || style.name}_${new Date().toISOString().split('T')[0]}.png`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+        } catch (error) {
+            console.error('Download failed:', error);
+            alert('이미지 생성에 실패했습니다.');
+            if (buttonGroupRef.current) buttonGroupRef.current.style.visibility = 'visible';
         }
     };
 
@@ -86,7 +116,9 @@ export const StyleDetailPanel: React.FC<StyleDetailPanelProps> = ({
             ></div>
 
             {/* 패널 컨테이너 */}
-            <div className="relative w-[90vw] max-w-md h-full bg-[#1a1a24] border-r border-white/10 flex flex-col shadow-2xl"
+            <div
+                ref={panelRef}
+                className="relative w-[90vw] max-w-md h-full bg-[#1a1a24] border-r border-white/10 flex flex-col shadow-2xl"
                 style={{ animation: 'slideInLeft 0.3s ease-out forwards' }}
             >
                 <style>{`
@@ -97,7 +129,7 @@ export const StyleDetailPanel: React.FC<StyleDetailPanelProps> = ({
                 `}</style>
 
                 {/* 헤더 */}
-                <div className="p-4 border-b border-white/5 flex items-center justify-between">
+                <div className="p-4 border-b border-white/5 flex items-center justify-between bg-[#1a1a24]">
                     <div className="flex items-center gap-3">
                         {styleIndex !== undefined && (
                             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold">
@@ -115,8 +147,11 @@ export const StyleDetailPanel: React.FC<StyleDetailPanelProps> = ({
                             </div>
                         </div>
                     </div>
+                    {/* 닫기 버튼은 캡처 시 숨기기 위해 별도 처리 대신, 헤더에 포함되어 캡처됨을 인지 */}
+                    {/* 만약 닫기 버튼도 숨기고 싶다면 data-html2canvas-ignore 사용 가능 */}
                     <button
                         onClick={onClose}
+                        data-html2canvas-ignore
                         className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
                     >
                         <i className="fas fa-times text-lg"></i>
@@ -124,7 +159,7 @@ export const StyleDetailPanel: React.FC<StyleDetailPanelProps> = ({
                 </div>
 
                 {/* 스크롤 영역 */}
-                <div className="flex-1 overflow-y-auto scrollbar-hide">
+                <div className="flex-1 overflow-y-auto scrollbar-hide bg-[#1a1a24]">
                     {/* 시뮬레이션 이미지 */}
                     {croppedImage && (
                         <div className="p-4">
@@ -203,8 +238,8 @@ export const StyleDetailPanel: React.FC<StyleDetailPanelProps> = ({
                     </div>
                 </div>
 
-                {/* 하단 버튼 */}
-                <div className="p-4 border-t border-white/5 space-y-2">
+                {/* 하단 버튼 (캡처 시 숨김 처리됨) */}
+                <div ref={buttonGroupRef} className="p-4 border-t border-white/5 space-y-2 bg-[#1a1a24]">
                     {croppedImage && (
                         <div className="grid grid-cols-2 gap-2">
                             <button
@@ -217,11 +252,10 @@ export const StyleDetailPanel: React.FC<StyleDetailPanelProps> = ({
                             <button
                                 onClick={handleSave}
                                 disabled={saved}
-                                className={`py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
-                                    saved
+                                className={`py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${saved
                                         ? 'bg-green-500/20 text-green-400'
                                         : 'bg-pink-500/20 text-pink-400 hover:bg-pink-500/30'
-                                }`}
+                                    }`}
                             >
                                 <i className={`fas ${saved ? 'fa-check' : 'fa-bookmark'}`}></i>
                                 {saved ? '저장됨' : '저장하기'}
