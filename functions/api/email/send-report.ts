@@ -112,12 +112,18 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   // 5. 이메일 발송 (fetch 사용)
   try {
     console.log(`[Email] Resend API 호출 시작... To: ${email}, Subject: ${analysisResult.faceShapeKo} 분석 리포트`);
-    console.log(`[Email] API Key 길이: ${env.RESEND_API_KEY ? env.RESEND_API_KEY.length : '없음'}`);
+    const apiKey = env.RESEND_API_KEY ? env.RESEND_API_KEY.trim() : '';
+
+    // API 키 마스킹 로그 (디버깅용)
+    const maskedKey = apiKey.length > 8
+      ? `${apiKey.substring(0, 5)}...${apiKey.substring(apiKey.length - 3)}`
+      : 'INVALID_KEY';
+    console.log(`[Email] API Key 확인: ${maskedKey} (Length: ${apiKey.length})`);
 
     const resendResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
