@@ -12,32 +12,11 @@ import { VideoConsultingModal } from './components/VideoConsultingModal';
 import { Footer } from './components/Footer';
 import { PaymentModal } from './components/PaymentModal';
 import { getPremiumStatus, savePremiumStatus, checkPaymentCallback, clearPremiumStatus, getCheckoutDetails } from './services/polarService';
-
-
-const QUOTES = [
-  "당신의 가치는 타인이 아닌 당신의 확신이 결정합니다.",
-  "어제보다 나은 오늘의 당신이 가장 아름답습니다.",
-  "시련은 성장을 위한 가장 정교한 디렉팅입니다.",
-  "모든 변화는 작은 용기에서 시작됩니다.",
-  "당신은 이미 충분히 빛날 자격을 갖추고 있습니다.",
-  "포기하지 않는 한, 실패는 성공의 과정일 뿐입니다.",
-  "당신만의 고유한 매력이 가장 강력한 브랜드입니다.",
-  "긍정적인 생각은 보이지 않는 길을 만들어냅니다.",
-  "내일의 기적은 오늘 흘린 땀방울에서 피어납니다.",
-  "스스로를 믿는 순간, 세상의 문이 열리기 시작합니다.",
-  "가장 위대한 걸작은 바로 당신의 삶입니다.",
-  "어려움은 더 큰 도약을 위한 발판에 불과합니다.",
-  "당신이 걷는 모든 발걸음이 역사가 됩니다.",
-  "오늘도 당신만의 색깔로 세상을 물들여 보세요.",
-  "진정한 아름다움은 자신을 사랑하는 마음에서 나옵니다.",
-  "꿈을 꾸는 것을 멈추지 마세요, 그것이 당신의 동력입니다.",
-  "당신의 열정은 반드시 누군가에게 영감이 됩니다.",
-  "작은 성취들이 모여 거대한 성공을 완성합니다.",
-  "지금 이 순간, 당신은 가장 멋진 가능성을 품고 있습니다.",
-  "당신의 빛나는 미래는 바로 지금 여기서 시작됩니다."
-];
+import { useLanguage } from './contexts/LanguageContext';
+import { LanguageSelector } from './components/LanguageSelector';
 
 const App: React.FC = () => {
+  const { t } = useLanguage();
   const [state, setState] = useState<AppState>(AppState.IDLE);
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [resultImage, setResultImage] = useState<string | null>(null);
@@ -106,8 +85,9 @@ const App: React.FC = () => {
     }
 
     // 2. 랜덤 명언 설정
-    const randomIndex = Math.floor(Math.random() * QUOTES.length);
-    setRandomQuote(QUOTES[randomIndex]);
+    const quotes = t.quotes;
+    const randomIndex = Math.floor(Math.random() * quotes.length);
+    setRandomQuote(quotes[randomIndex]);
 
     // 프리미엄 상태 확인
     const premiumStatus = getPremiumStatus();
@@ -600,17 +580,17 @@ const App: React.FC = () => {
               className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
             >
               <i className="fas fa-arrow-left"></i>
-              <span>뒤로</span>
+              <span>{t.common.back}</span>
             </button>
-            <span className="text-white font-bold">사진 확인</span>
+            <span className="text-white font-bold">{t.preview.title}</span>
             <div className="w-16"></div>
           </header>
 
           <div className="flex-1 w-full flex flex-col items-center px-5 pb-8 overflow-y-auto">
             {/* 안내 메시지 */}
             <div className="mb-6 text-center mt-4">
-              <h2 className="text-white text-xl font-bold mb-2">사진이 잘 나왔나요?</h2>
-              <p className="text-gray-400 text-sm">얼굴이 정면으로 나온 사진이 가장 정확해요!</p>
+              <h2 className="text-white text-xl font-bold mb-2">{t.preview.question}</h2>
+              <p className="text-gray-400 text-sm">{t.preview.hint}</p>
             </div>
 
             {/* 이미지 미리보기 */}
@@ -618,7 +598,7 @@ const App: React.FC = () => {
               <div className="aspect-square rounded-3xl overflow-hidden border-4 border-violet-500/30 shadow-2xl shadow-violet-500/20">
                 <img
                   src={originalImage}
-                  alt="업로드된 사진"
+                  alt="Uploaded photo"
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -639,9 +619,9 @@ const App: React.FC = () => {
                     <i className="fas fa-lightbulb text-violet-400 text-sm"></i>
                   </div>
                   <div>
-                    <p className="text-gray-300 text-sm font-medium mb-1">팁!</p>
+                    <p className="text-gray-300 text-sm font-medium mb-1">{t.common.tip}</p>
                     <p className="text-gray-500 text-xs leading-relaxed">
-                      얼굴 전체가 보이고, 정면을 바라보는 사진일수록 더 정확한 분석이 가능해요.
+                      {t.preview.tipContent}
                     </p>
                   </div>
                 </div>
@@ -656,7 +636,7 @@ const App: React.FC = () => {
                 className="w-full py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-bold text-lg flex items-center justify-center gap-3 hover:opacity-90 transition-all glow-button"
               >
                 <i className="fas fa-magic"></i>
-                $5.99 결제하고 AI 분석 시작
+                {t.preview.startAnalysis}
               </button>
 
               {/* 다른 사진 선택 */}
@@ -665,7 +645,7 @@ const App: React.FC = () => {
                 className="w-full py-4 rounded-2xl bg-white/5 border border-white/10 text-gray-300 font-medium flex items-center justify-center gap-2 hover:bg-white/10 transition-all"
               >
                 <i className="fas fa-camera"></i>
-                다른 사진 선택
+                {t.preview.chooseAnother}
               </button>
             </div>
           </div>
@@ -682,14 +662,11 @@ const App: React.FC = () => {
             <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center">
               <i className="fas fa-robot text-white text-sm"></i>
             </div>
-            <span className="text-white font-bold text-lg">헤어디렉터</span>
+            <span className="text-white font-bold text-lg">{t.common.appName}</span>
           </div>
-          <button
-            onClick={handleOpenKeyDialog}
-            className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all"
-          >
-            <i className="fas fa-user text-white/70"></i>
-          </button>
+          <div className="flex items-center gap-2">
+            <LanguageSelector />
+          </div>
         </header>
 
         {/* 메인 콘텐츠 */}
@@ -717,20 +694,20 @@ const App: React.FC = () => {
               <div className="fade-in-up mt-6 mb-6">
                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10">
                   <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
-                  <span className="text-sm text-gray-400">AI 기반 V2.0</span>
+                  <span className="text-sm text-gray-400">{t.home.aiBasedVersion}</span>
                 </div>
               </div>
 
               {/* 메인 타이틀 */}
               <div className="text-center mb-8 fade-in-up-delay-1">
                 <h1 className="text-4xl font-black text-white mb-2 leading-tight">
-                  커피 두 잔 값으로
+                  {t.home.mainTitle1}
                 </h1>
                 <h1 className="text-4xl font-black text-white leading-tight">
-                  평생의 인생 헤어스타일 찾기
+                  {t.home.mainTitle2}
                 </h1>
                 <p className="text-gray-400 mt-4 text-sm">
-                  AI 얼굴형 분석 및 가상 헤어 체험
+                  {t.home.subtitle}
                 </p>
               </div>
 
@@ -741,14 +718,14 @@ const App: React.FC = () => {
                   className={`relative w-44 h-44 rounded-full glow-button pulse-animation flex flex-col items-center justify-center gap-3 cursor-pointer ${isDragging ? 'opacity-50 scale-110' : ''} transition-all`}
                 >
                   <i className="fas fa-camera text-white text-4xl"></i>
-                  <span className="text-white font-bold text-lg">스캔 시작</span>
+                  <span className="text-white font-bold text-lg">{t.home.scanButton}</span>
                 </button>
               </div>
 
               {/* 드래그 앤 드롭 안내 */}
               <div className="fade-in-up-delay-2 flex items-center gap-2 text-gray-500 text-xs mb-4">
                 <i className="fas fa-hand-pointer"></i>
-                <span>클릭하거나 사진을 여기로 드래그하세요</span>
+                <span>{t.home.dragDropHint}</span>
               </div>
 
               {/* 랜덤 명언 (이전: 100% 개인정보 보호) */}
@@ -763,7 +740,7 @@ const App: React.FC = () => {
                 <div className="w-full max-w-md p-4 mb-6 rounded-2xl bg-red-500/10 border border-red-500/30">
                   <div className="flex items-center gap-3 text-red-400 mb-2">
                     <i className="fas fa-exclamation-circle"></i>
-                    <span className="font-bold">{errorMessage.includes("환불") ? "자동 환불 완료" : "오류 발생"}</span>
+                    <span className="font-bold">{errorMessage.includes("환불") ? t.errors.autoRefundComplete : t.errors.errorOccurred}</span>
                   </div>
                   <p className="text-red-300 text-sm whitespace-pre-wrap">{errorMessage}</p>
 
@@ -772,7 +749,7 @@ const App: React.FC = () => {
                     <div className="mt-4 p-3 bg-green-500/20 rounded-xl border border-green-500/30">
                       <div className="flex items-center gap-2 text-green-400 text-sm">
                         <i className="fas fa-check-circle"></i>
-                        <span>결제 금액이 자동으로 환불 처리되었습니다.</span>
+                        <span>{t.errors.autoRefundProcessed}</span>
                       </div>
                     </div>
                   )}
@@ -781,20 +758,20 @@ const App: React.FC = () => {
                     onClick={handleOpenKeyDialog}
                     className="mt-3 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 rounded-xl text-red-300 text-sm font-medium transition-all"
                   >
-                    <i className="fas fa-key mr-2"></i>API 키 변경 (개발자용)
+                    <i className="fas fa-key mr-2"></i>API Key
                   </button>
                 </div>
               )}
 
               {/* 기능 카드 섹션 */}
-              <section className="w-full max-w-md fade-in-up-delay-3" aria-label="주요 기능">
+              <section className="w-full max-w-md fade-in-up-delay-3" aria-label="Features">
                 <div className="glass-card-dark p-4">
                   <div className="flex items-center justify-around">
-                    <FeatureItem icon="fa-upload" label="사진 업로드" />
+                    <FeatureItem icon="fa-upload" label={t.home.photoUpload} />
                     <div className="w-16 h-0.5 bg-gradient-to-r from-violet-500/0 via-violet-500/50 to-violet-500/0"></div>
-                    <FeatureItem icon="fa-face-smile" label="AI 얼굴 분석" />
+                    <FeatureItem icon="fa-face-smile" label={t.home.aiFaceAnalysis} />
                     <div className="w-16 h-0.5 bg-gradient-to-r from-violet-500/0 via-violet-500/50 to-violet-500/0"></div>
-                    <FeatureItem icon="fa-scissors" label="스타일 추천" />
+                    <FeatureItem icon="fa-scissors" label={t.home.styleRecommendation} />
                   </div>
                 </div>
               </section>
@@ -803,20 +780,20 @@ const App: React.FC = () => {
               <section className="w-full max-w-md mt-8 fade-in-up-delay-3" aria-labelledby="popular-styles-title">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <h2 id="popular-styles-title" className="text-white font-bold text-lg">인기라 헤어스타일</h2>
-                    <span className="badge-live px-2 py-0.5 rounded text-[10px] font-bold text-white uppercase" aria-label="실시간 인기">
-                      Live
+                    <h2 id="popular-styles-title" className="text-white font-bold text-lg">{t.home.popularStyles}</h2>
+                    <span className="badge-live px-2 py-0.5 rounded text-[10px] font-bold text-white uppercase">
+                      {t.common.live}
                     </span>
                   </div>
                   <button
                     onClick={() => handleNavClick('saved')}
                     className="text-gray-400 text-sm hover:text-violet-400 transition-colors"
                   >
-                    <span className="text-violet-400">전체 보기</span>
+                    <span className="text-violet-400">{t.common.viewAll}</span>
                     <i className="fas fa-chevron-right ml-1 text-xs text-violet-400"></i>
                   </button>
                 </div>
-                <p className="text-gray-500 text-sm mb-4">지금 가장 사랑받는 2024 트렌드 디자인</p>
+                <p className="text-gray-500 text-sm mb-4">{t.home.trendDescription}</p>
 
                 {/* 스타일 프리뷰 - 유튜브 쇼츠 */}
                 <div className="grid grid-cols-3 gap-3">
@@ -921,7 +898,7 @@ const App: React.FC = () => {
             className={`flex flex-col items-center justify-center w-16 h-full gap-1 transition-colors ${activeTab === 'home' || activeTab === 'report' ? 'text-gray-500' : 'text-gray-500'} ${activeTab === 'home' ? '!text-violet-400' : ''}`}
           >
             <i className={`fas fa-home text-xl ${activeTab === 'home' ? 'animate-bounce-small' : ''}`}></i>
-            <span className="text-[10px] font-medium">홈</span>
+            <span className="text-[10px] font-medium">{t.common.home}</span>
           </button>
 
 
@@ -930,7 +907,7 @@ const App: React.FC = () => {
           <button
             onClick={() => {
               if (analysisResult) handleNavClick('report');
-              else alert("아직 분석된 결과가 없습니다. 홈에서 스캔을 시작해보세요!");
+              else alert(t.analysis.noResult);
             }}
             className={`flex flex-col items-center justify-center w-16 h-full gap-1 transition-colors ${activeTab === 'report' ? 'text-violet-400' : 'text-gray-500'} ${!analysisResult ? 'opacity-40' : ''}`}
           >
@@ -940,7 +917,7 @@ const App: React.FC = () => {
                 <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse border border-[#1a1a2e]"></span>
               )}
             </div>
-            <span className="text-[10px] font-medium">분석결과</span>
+            <span className="text-[10px] font-medium">{t.common.analysisResult}</span>
           </button>
 
           {/* 저장됨 버튼 */}
@@ -949,7 +926,7 @@ const App: React.FC = () => {
             className={`flex flex-col items-center justify-center w-16 h-full gap-1 transition-colors ${activeTab === 'saved' ? 'text-violet-400' : 'text-gray-500'}`}
           >
             <i className={`fas fa-bookmark text-xl ${activeTab === 'saved' ? 'animate-bounce-small' : ''}`}></i>
-            <span className="text-[10px] font-medium">저장됨</span>
+            <span className="text-[10px] font-medium">{t.common.saved}</span>
           </button>
         </div>
       </nav>
@@ -969,7 +946,7 @@ const App: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-12 h-1 bg-gray-600 rounded-full mx-auto mb-6"></div>
-            <h3 className="text-white text-lg font-bold text-center mb-6">사진 업로드 방법 선택</h3>
+            <h3 className="text-white text-lg font-bold text-center mb-6">{t.upload.title}</h3>
 
             <div className="space-y-3">
               {/* 카메라 촬영 */}
@@ -981,8 +958,8 @@ const App: React.FC = () => {
                   <i className="fas fa-camera text-xl"></i>
                 </div>
                 <div className="text-left">
-                  <div className="font-bold">카메라로 촬영</div>
-                  <div className="text-sm text-white/70">지금 바로 셀카 촬영하기</div>
+                  <div className="font-bold">{t.upload.camera}</div>
+                  <div className="text-sm text-white/70">{t.upload.cameraDesc}</div>
                 </div>
               </button>
 
@@ -995,8 +972,8 @@ const App: React.FC = () => {
                   <i className="fas fa-images text-xl text-violet-400"></i>
                 </div>
                 <div className="text-left">
-                  <div className="font-bold">갤러리에서 선택</div>
-                  <div className="text-sm text-gray-400">저장된 사진 불러오기</div>
+                  <div className="font-bold">{t.upload.gallery}</div>
+                  <div className="text-sm text-gray-400">{t.upload.galleryDesc}</div>
                 </div>
               </button>
             </div>
@@ -1006,7 +983,7 @@ const App: React.FC = () => {
               onClick={() => setShowUploadModal(false)}
               className="w-full mt-4 py-3 text-gray-400 hover:text-white transition-colors"
             >
-              취소
+              {t.common.cancel}
             </button>
           </div>
         </div>
@@ -1023,7 +1000,7 @@ const App: React.FC = () => {
             >
               <i className="fas fa-times text-2xl"></i>
             </button>
-            <span className="text-white font-bold">카메라</span>
+            <span className="text-white font-bold">{t.camera.title}</span>
             <div className="w-8"></div>
           </header>
 
@@ -1034,13 +1011,13 @@ const App: React.FC = () => {
                 <div className="w-20 h-20 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
                   <i className="fas fa-video-slash text-red-400 text-3xl"></i>
                 </div>
-                <p className="text-red-400 font-medium mb-2">카메라 접근 실패</p>
+                <p className="text-red-400 font-medium mb-2">{t.camera.accessFailed}</p>
                 <p className="text-gray-400 text-sm mb-6">{cameraError}</p>
                 <button
                   onClick={stopCamera}
                   className="px-6 py-3 rounded-xl bg-white/10 text-white font-medium"
                 >
-                  닫기
+                  {t.common.close}
                 </button>
               </div>
             ) : (
@@ -1049,8 +1026,8 @@ const App: React.FC = () => {
                 {!cameraReady && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-black z-10">
                     <div className="w-16 h-16 border-4 border-violet-500/30 border-t-violet-500 rounded-full animate-spin mb-4"></div>
-                    <p className="text-violet-400 font-medium">카메라 준비 중...</p>
-                    <p className="text-gray-500 text-sm mt-2">카메라 권한을 허용해주세요</p>
+                    <p className="text-violet-400 font-medium">{t.camera.preparing}</p>
+                    <p className="text-gray-500 text-sm mt-2">{t.camera.permissionHint}</p>
                   </div>
                 )}
                 <video
@@ -1078,7 +1055,7 @@ const App: React.FC = () => {
                 </button>
               </div>
               <p className="text-center text-gray-400 text-sm mt-4">
-                정면을 바라보고 촬영해주세요
+                {t.camera.captureHint}
               </p>
             </div>
           )}
