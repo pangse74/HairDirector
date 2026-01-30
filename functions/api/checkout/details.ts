@@ -53,8 +53,8 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         }
 
         // Polar.sh 체크아웃 정보 조회
-        // Sandbox API URL 사용
-        const polarResponse = await fetch(`https://sandbox-api.polar.sh/v1/checkouts/custom/${checkoutId}`, {
+        // Production API URL 사용
+        const polarResponse = await fetch(`https://api.polar.sh/v1/checkouts/custom/${checkoutId}`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
@@ -67,7 +67,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
         if (!polarResponse.ok) {
             // Retry with standard checkout endpoint if custom fails
-            const standardResponse = await fetch(`https://sandbox-api.polar.sh/v1/checkouts/${checkoutId}`, {
+            const standardResponse = await fetch(`https://api.polar.sh/v1/checkouts/${checkoutId}`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${accessToken}`,

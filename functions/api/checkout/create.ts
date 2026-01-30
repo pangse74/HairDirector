@@ -64,7 +64,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
         // Polar.sh 체크아웃 세션 생성
         // API 문서: https://polar.sh/docs/api-reference/checkouts/create-session
-        const polarResponse = await fetch('https://sandbox-api.polar.sh/v1/checkouts/', {
+        const polarResponse = await fetch('https://api.polar.sh/v1/checkouts/', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
