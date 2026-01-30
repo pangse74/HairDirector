@@ -14,14 +14,17 @@ import { PaymentModal } from './components/PaymentModal';
 import { getPremiumStatus, savePremiumStatus, checkPaymentCallback, clearPremiumStatus, getCheckoutDetails } from './services/polarService';
 import { useLanguage } from './contexts/LanguageContext';
 import { LanguageSelector } from './components/LanguageSelector';
+import { PrivacyView } from './components/PrivacyView';
+import { TermsView } from './components/TermsView';
+import { RefundView } from './components/RefundView';
 
 const App: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [state, setState] = useState<AppState>(AppState.IDLE);
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [resultImage, setResultImage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'home' | 'saved' | 'report'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'saved' | 'report' | 'privacy' | 'terms' | 'refund'>('home');
   const [isDragging, setIsDragging] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
@@ -53,8 +56,8 @@ const App: React.FC = () => {
     // 1. URL 쿼리 파라미터로 탭 전환 (외부 링크 지원)
     const urlParams = new URLSearchParams(window.location.search);
     const tabParam = urlParams.get('tab');
-    if (tabParam === 'history' || tabParam === 'saved' || tabParam === 'home') {
-      setActiveTab(tabParam);
+    if (tabParam === 'history' || tabParam === 'saved' || tabParam === 'home' || tabParam === 'privacy' || tabParam === 'terms' || tabParam === 'refund') {
+      setActiveTab(tabParam as any);
     }
 
     // [자동 복구 로직] 마지막 세션 확인
@@ -535,7 +538,7 @@ const App: React.FC = () => {
   };
 
   // 공통 네비게이션 핸들러
-  const handleNavClick = (tab: 'home' | 'history' | 'saved' | 'report') => {
+  const handleNavClick = (tab: 'home' | 'history' | 'saved' | 'report' | 'privacy' | 'terms' | 'refund') => {
     setActiveTab(tab);
 
     // 탭 이동 시 데이터를 초기화하지 않음 (사용자가 다시 분석결과를 보고 싶어할 수 있음)
@@ -550,8 +553,26 @@ const App: React.FC = () => {
     // setOriginalImage(null); 
   };
 
-  const renderContent = () => {
+  const handleBackToHome = () => {
+    setActiveTab('home');
+    setState(AppState.IDLE);
+    window.history.pushState({}, '', '/');
+  };
 
+  const renderContent = () => {
+    // Assuming 'language' is destructured from useLanguage() at a higher scope, e.g.,
+    // const { t, language } = useLanguage();
+
+    // 0. 정책 페이지 처리
+    if (activeTab === 'privacy') {
+      return <PrivacyView onBack={handleBackToHome} content={t.privacyPage} />;
+    }
+    if (activeTab === 'terms') {
+      return <TermsView onBack={handleBackToHome} content={t.termsPage} />;
+    }
+    if (activeTab === 'refund') {
+      return <RefundView onBack={handleBackToHome} content={t.refundPage} />;
+    }
 
     // 1. 통합 결과 화면 (분석 결과 + 3x3 그리드) 또는 'report' 탭 활성화 시
     // activeTab === 'report'일 때도 이 화면을 보여주도록 조건 추가
@@ -831,7 +852,7 @@ const App: React.FC = () => {
         </div>
 
         {/* 푸터 */}
-        <Footer />
+        <Footer onNavClick={handleNavClick} />
       </>
     );
   };
@@ -882,6 +903,10 @@ const App: React.FC = () => {
         <PaymentModal
           onClose={() => setShowPaymentModal(false)}
           currentImage={originalImage} // [추가] 결제 전 이미지 백업용
+          onNavClick={(tab) => {
+            setShowPaymentModal(false);
+            handleNavClick(tab);
+          }}
           onSuccess={() => {
             setIsPremium(true);
             setShowPaymentModal(false);

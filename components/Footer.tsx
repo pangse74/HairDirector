@@ -1,7 +1,11 @@
 import React from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 
-export const Footer: React.FC = () => {
+interface FooterProps {
+    onNavClick: (tab: 'privacy' | 'terms' | 'refund') => void;
+}
+
+export const Footer: React.FC<FooterProps> = ({ onNavClick }) => {
     const { t } = useLanguage();
 
     return (
@@ -9,26 +13,26 @@ export const Footer: React.FC = () => {
             <div className="max-w-md mx-auto">
                 {/* 법적 문서 링크 */}
                 <div className="flex items-center justify-center gap-4 text-xs text-gray-500 mb-4">
-                    <a
-                        href="/privacy-policy.html"
+                    <button
+                        onClick={() => onNavClick('privacy')}
                         className="hover:text-violet-400 transition-colors"
                     >
                         {t.footer.privacyPolicy}
-                    </a>
+                    </button>
                     <span className="text-gray-700">|</span>
-                    <a
-                        href="/terms.html"
+                    <button
+                        onClick={() => onNavClick('terms')}
                         className="hover:text-violet-400 transition-colors"
                     >
                         {t.footer.terms}
-                    </a>
+                    </button>
                     <span className="text-gray-700">|</span>
-                    <a
-                        href="/refund-policy.html"
+                    <button
+                        onClick={() => onNavClick('refund')}
                         className="hover:text-violet-400 transition-colors"
                     >
                         {t.footer.refundPolicy}
-                    </a>
+                    </button>
                 </div>
 
                 {/* 결제 안전 고지 */}

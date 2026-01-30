@@ -4,10 +4,11 @@ import { createCheckoutSession } from '../services/polarService';
 interface PaymentModalProps {
     onClose: () => void;
     onSuccess?: () => void;
-    currentImage?: string | null; // [추가]
+    currentImage?: string | null;
+    onNavClick: (tab: 'privacy' | 'terms' | 'refund') => void; // [추가]
 }
 
-export const PaymentModal: React.FC<PaymentModalProps> = ({ onClose, onSuccess, currentImage }) => {
+export const PaymentModal: React.FC<PaymentModalProps> = ({ onClose, onSuccess, currentImage, onNavClick }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -118,9 +119,11 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ onClose, onSuccess, 
                             className="mt-1 w-4 h-4 rounded border-gray-600 text-violet-500 focus:ring-violet-500 focus:ring-offset-0 bg-transparent"
                         />
                         <span className="text-gray-400 text-xs leading-relaxed">
-                            <a href="/terms.html" target="_blank" className="text-violet-400 hover:underline">이용약관</a>,{' '}
-                            <a href="/privacy-policy.html" target="_blank" className="text-violet-400 hover:underline">개인정보처리방침</a>,{' '}
-                            <a href="/refund-policy.html" target="_blank" className="text-violet-400 hover:underline">환불정책</a>에 동의합니다.
+                            <span className="text-gray-400 text-xs leading-relaxed">
+                                <button onClick={() => onNavClick('terms')} className="text-violet-400 hover:underline">이용약관</button>,{' '}
+                                <button onClick={() => onNavClick('privacy')} className="text-violet-400 hover:underline">개인정보처리방침</button>,{' '}
+                                <button onClick={() => onNavClick('refund')} className="text-violet-400 hover:underline">환불정책</button>에 동의합니다.
+                            </span>
                         </span>
                     </label>
                 </div>
