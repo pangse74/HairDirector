@@ -14,8 +14,8 @@ import { ja } from './ja';
 export type Language = 'en' | 'es' | 'fr' | 'pt' | 'ar' | 'th' | 'vi' | 'ru' | 'zh' | 'ja' | 'ko';
 
 export const LANGUAGES: { code: Language; name: string; nativeName: string; flag: string }[] = [
-  { code: 'ko', name: 'Korean', nativeName: '한국어', flag: '🇰🇷' },
   { code: 'en', name: 'English', nativeName: 'English', flag: '🇺🇸' },
+  { code: 'ko', name: 'Korean', nativeName: '한국어', flag: '🇰🇷' },
   { code: 'zh', name: 'Chinese', nativeName: '中文', flag: '🇨🇳' },
   { code: 'ja', name: 'Japanese', nativeName: '日本語', flag: '🇯🇵' },
   { code: 'es', name: 'Spanish', nativeName: 'Español', flag: '🇪🇸' },
@@ -33,18 +33,17 @@ export const translations: Record<Language, TranslationType> = {
   ko, en, es, fr, pt, ar, th, vi, ru, zh, ja,
 };
 
-// 브라우저 언어 감지
+// 언어 감지 (기본값: 영어)
 export function detectLanguage(): Language {
   if (typeof window === 'undefined') return 'en';
 
+  // 저장된 언어가 있으면 사용, 없으면 영어
   const stored = localStorage.getItem('hairfit_language');
   if (stored && LANGUAGES.find(l => l.code === stored)) {
     return stored as Language;
   }
 
-  const browserLang = navigator.language.split('-')[0];
-  const matched = LANGUAGES.find(l => l.code === browserLang);
-  return matched ? matched.code : 'en';
+  return 'en'; // 기본값: 영어
 }
 
 // 언어 저장
