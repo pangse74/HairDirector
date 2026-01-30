@@ -4,6 +4,7 @@
 interface Env {
     POLAR_ACCESS_TOKEN: string;
     POLAR_PRODUCT_ID: string;
+    POLAR_ENV?: string;
 }
 
 interface RequestBody {
@@ -40,8 +41,8 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
     try {
         // 환경변수 확인
-        const accessToken = env.POLAR_ACCESS_TOKEN;
-        const productId = env.POLAR_PRODUCT_ID;
+        const accessToken = env.POLAR_ACCESS_TOKEN?.trim();
+        const productId = env.POLAR_PRODUCT_ID?.trim();
 
         if (!accessToken || !productId) {
             console.error('Missing Polar.sh configuration');
@@ -64,7 +65,18 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
         // Polar.sh 체크아웃 세션 생성
         // API 문서: https://polar.sh/docs/api-reference/checkouts/create-session
-        const polarResponse = await fetch('https://api.polar.sh/v1/checkouts/', {
+        // Polar.sh API 엔드포인트 설정
+        // 기본값은 프로덕션(api.polar.sh)입니다.
+        // 샌드박스 토큰(polar_sand_...)을 사용하는 경우 자동으로 샌드박스 URL로 전환하거나
+        // 환경변수 POLAR_ENV=sandbox 로 명시할 수 있습니다.
+        const isSandbox = accessToken.startsWith('polar_est_') || env.POLAR_ENV === 'sandbox';
+        const polarApiUrl = isSandbox
+            ? 'https://sandbox-api.polar.sh/v1/checkouts/'
+            : 'https://api.polar.sh/v1/checkouts/';
+
+        console.log(`Using Polar API: ${polarApiUrl} (Token prefix: ${accessToken.substring(0, 10)}...)`);
+
+        const polarResponse = await fetch(polarApiUrl, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${accessToken}`,

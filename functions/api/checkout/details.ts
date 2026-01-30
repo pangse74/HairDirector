@@ -33,7 +33,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     }
 
     try {
-        const accessToken = env.POLAR_ACCESS_TOKEN;
+        const accessToken = env.POLAR_ACCESS_TOKEN?.trim();
         if (!accessToken) {
             console.error('Missing Polar.sh configuration');
             return new Response(
