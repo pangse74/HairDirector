@@ -149,49 +149,36 @@ export const shareKakao = async (options: {
         return false;
     }
 
-    // imageUrl이 base64인 경우 기본 OG 이미지 사용
-    const finalImageUrl = imageUrl && !imageUrl.startsWith('data:')
-        ? imageUrl
-        : 'https://hairdirector.site/og-image.png';
-
-    console.log('📤 카카오 공유 시도:', { title, description, finalImageUrl, url });
+    // 이미지 URL 없이 테스트
+    console.log('📤 카카오 공유 시도 (이미지 없음):', { title, description, url });
 
     try {
-        window.Kakao.Share.sendDefault({
+        // Kakao SDK v2는 Promise를 반환
+        const response = await (window.Kakao.Share.sendDefault as (settings: KakaoShareSettings) => Promise<unknown>)({
             objectType: 'feed',
             content: {
                 title,
                 description,
-                imageUrl: finalImageUrl,
+                imageUrl: 'https://hairdirector.site/og-image.png',
                 link: {
                     mobileWebUrl: url,
                     webUrl: url,
                 },
             },
-            buttons: [
-                {
-                    title: buttonTitle,
-                    link: {
-                        mobileWebUrl: url,
-                        webUrl: url,
-                    },
-                },
-            ],
-            serverCallbackArgs: {
-                key: 'value'
-            },
-            installTalk: true,
-            callback: () => {
-                console.log('✅ 카카오 공유 콜백 - 성공');
-            },
-            fail: (error: unknown) => {
-                console.error('❌ 카카오 공유 콜백 - 실패:', error);
-            }
-        } as KakaoShareSettings & { serverCallbackArgs?: object; installTalk?: boolean; callback?: () => void; fail?: (error: unknown) => void });
-        console.log('✅ 카카오 공유 요청 완료');
+        });
+        console.log('✅ 카카오 공유 응답:', response);
         return true;
-    } catch (error) {
+    } catch (error: unknown) {
+        // 상세 에러 정보 출력
         console.error('❌ 카카오톡 공유 실패:', error);
+        if (error && typeof error === 'object') {
+            console.error('❌ 에러 상세:', JSON.stringify(error, null, 2));
+        }
+
+        // 에러 메시지를 alert로 표시 (디버깅용)
+        const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
+        alert(`카카오 공유 에러: ${errorMsg}`);
+
         return false;
     }
 };
