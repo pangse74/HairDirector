@@ -27,6 +27,13 @@ interface GeminiResponse {
 
 const DEFAULT_STYLES = ["포마드컷", "리프컷", "댄디컷", "리젠트컷", "쉐도우펌", "아이비리그컷", "애즈펌", "슬릭백", "투블럭컷"];
 
+// 재시도 설정
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 2000; // 2초 대기 후 재시도
+
+// 지연 함수
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 // CORS 헤더
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -97,98 +104,169 @@ face distortion, changing facial features, makeup changes, skin smoothing, redra
 [ZERO TEXT RULE]
 - NO TEXT WHATSOEVER. Pure photography only.`;
 
-        // Gemini API 호출 (Nano Banana Pro = gemini-3-pro-image-preview)
-        const geminiResponse = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${apiKey}`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [
-                            {
-                                inlineData: {
-                                    mimeType: mimeType || 'image/png',
-                                    data: image,
-                                },
+        // Gemini API 호출 (재시도 로직 포함)
+        let lastError: any = null;
+
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            console.log(`🔄 Gemini API 시도 ${attempt}/${MAX_RETRIES}`);
+
+            // 50초 타임아웃 설정 (Cloudflare Workers 무료 플랜 제한 고려)
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 50000);
+
+            try {
+                const geminiResponse = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${apiKey}`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            contents: [{
+                                parts: [
+                                    {
+                                        inlineData: {
+                                            mimeType: mimeType || 'image/png',
+                                            data: image,
+                                        },
+                                    },
+                                    { text: prompt },
+                                ],
+                            }],
+                            generationConfig: {
+                                responseModalities: ["image", "text"],
                             },
-                            { text: prompt },
-                        ],
-                    }],
-                    generationConfig: {
-                        responseModalities: ["image", "text"],
-                    },
-                }),
-            }
-        );
-
-        if (!geminiResponse.ok) {
-            const errorText = await geminiResponse.text();
-            console.error('Gemini API Error:', errorText);
-
-            // 429 Rate Limit 에러 처리
-            if (geminiResponse.status === 429) {
-                let retryAfter = 60; // 기본 60초
-                try {
-                    const errorJson = JSON.parse(errorText);
-                    // RetryInfo에서 대기 시간 추출
-                    const retryInfo = errorJson.error?.details?.find(
-                        (d: any) => d['@type']?.includes('RetryInfo')
-                    );
-                    if (retryInfo?.retryDelay) {
-                        const match = retryInfo.retryDelay.match(/(\d+)/);
-                        if (match) retryAfter = parseInt(match[1], 10);
+                        }),
+                        signal: controller.signal,
                     }
-                } catch (e) {
-                    // JSON 파싱 실패 시 기본값 사용
+                );
+                clearTimeout(timeoutId);
+
+                if (!geminiResponse.ok) {
+                    const errorText = await geminiResponse.text();
+                    console.error(`Gemini API Error (attempt ${attempt}):`, errorText);
+
+                    // 429 Rate Limit 에러 처리 - 재시도하지 않고 바로 반환
+                    if (geminiResponse.status === 429) {
+                        let retryAfter = 60; // 기본 60초
+                        try {
+                            const errorJson = JSON.parse(errorText);
+                            const retryInfo = errorJson.error?.details?.find(
+                                (d: any) => d['@type']?.includes('RetryInfo')
+                            );
+                            if (retryInfo?.retryDelay) {
+                                const match = retryInfo.retryDelay.match(/(\d+)/);
+                                if (match) retryAfter = parseInt(match[1], 10);
+                            }
+                        } catch (e) {
+                            // JSON 파싱 실패 시 기본값 사용
+                        }
+
+                        return new Response(
+                            JSON.stringify({
+                                error: 'RATE_LIMIT_EXCEEDED',
+                                message: 'API 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요.',
+                                retryAfter: retryAfter
+                            }),
+                            { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                        );
+                    }
+
+                    // 5xx 서버 에러는 재시도
+                    if (geminiResponse.status >= 500 && attempt < MAX_RETRIES) {
+                        console.log(`⏳ 서버 에러, ${RETRY_DELAY_MS}ms 후 재시도...`);
+                        await delay(RETRY_DELAY_MS);
+                        lastError = new Error(`Gemini API error: ${geminiResponse.status}`);
+                        continue;
+                    }
+
+                    return new Response(
+                        JSON.stringify({ error: 'Gemini API error', details: errorText }),
+                        { status: geminiResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                    );
+                }
+
+                const geminiData = await geminiResponse.json() as GeminiResponse;
+
+                // 이미지 데이터 추출
+                const parts = geminiData.candidates?.[0]?.content?.parts;
+                if (!parts) {
+                    // 응답 형식 오류 - 재시도
+                    if (attempt < MAX_RETRIES) {
+                        console.log(`⚠️ 응답 형식 오류, ${RETRY_DELAY_MS}ms 후 재시도...`);
+                        await delay(RETRY_DELAY_MS);
+                        lastError = new Error('Invalid response format');
+                        continue;
+                    }
+                    return new Response(
+                        JSON.stringify({ error: 'Invalid response format' }),
+                        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                    );
+                }
+
+                for (const part of parts) {
+                    if (part.inlineData) {
+                        console.log(`✅ 이미지 생성 성공 (시도 ${attempt}/${MAX_RETRIES})`);
+                        return new Response(
+                            JSON.stringify({
+                                success: true,
+                                image: part.inlineData.data,
+                                mimeType: part.inlineData.mimeType || 'image/png'
+                            }),
+                            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                        );
+                    }
+                }
+
+                // 이미지 없음 - 재시도
+                if (attempt < MAX_RETRIES) {
+                    console.log(`⚠️ 이미지 없음, ${RETRY_DELAY_MS}ms 후 재시도...`);
+                    await delay(RETRY_DELAY_MS);
+                    lastError = new Error('No image generated');
+                    continue;
                 }
 
                 return new Response(
-                    JSON.stringify({
-                        error: 'RATE_LIMIT_EXCEEDED',
-                        message: 'API 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요.',
-                        retryAfter: retryAfter
-                    }),
-                    { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                    JSON.stringify({ error: 'No image generated' }),
+                    { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
                 );
-            }
 
-            return new Response(
-                JSON.stringify({ error: 'Gemini API error', details: errorText }),
-                { status: geminiResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-        }
+            } catch (error: any) {
+                clearTimeout(timeoutId);
 
-        const geminiData = await geminiResponse.json() as GeminiResponse;
+                if (error.name === 'AbortError') {
+                    console.error(`Gemini API Timeout (attempt ${attempt})`);
+                    // 타임아웃도 재시도
+                    if (attempt < MAX_RETRIES) {
+                        console.log(`⏳ 타임아웃, ${RETRY_DELAY_MS}ms 후 재시도...`);
+                        await delay(RETRY_DELAY_MS);
+                        lastError = error;
+                        continue;
+                    }
+                    return new Response(
+                        JSON.stringify({
+                            error: 'TIMEOUT',
+                            message: '이미지 생성 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.'
+                        }),
+                        { status: 504, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                    );
+                }
 
-        // 이미지 데이터 추출
-        const parts = geminiData.candidates?.[0]?.content?.parts;
-        if (!parts) {
-            return new Response(
-                JSON.stringify({ error: 'Invalid response format' }),
-                { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-        }
+                // 기타 에러도 재시도
+                if (attempt < MAX_RETRIES) {
+                    console.log(`⚠️ 에러 발생, ${RETRY_DELAY_MS}ms 후 재시도...`, error.message);
+                    await delay(RETRY_DELAY_MS);
+                    lastError = error;
+                    continue;
+                }
 
-        for (const part of parts) {
-            if (part.inlineData) {
-                return new Response(
-                    JSON.stringify({
-                        success: true,
-                        image: part.inlineData.data,
-                        mimeType: part.inlineData.mimeType || 'image/png'
-                    }),
-                    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-                );
+                throw error;
             }
         }
 
-        return new Response(
-            JSON.stringify({ error: 'No image generated' }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        // 모든 재시도 실패
+        throw lastError || new Error('All retries failed');
 
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -199,3 +277,4 @@ face distortion, changing facial features, makeup changes, skin smoothing, redra
         );
     }
 };
+

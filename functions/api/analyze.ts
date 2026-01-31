@@ -21,6 +21,13 @@ interface GeminiResponse {
     }>;
 }
 
+// 재시도 설정
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 1500; // 1.5초 대기 후 재시도
+
+// 지연 함수
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 // CORS 헤더
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -123,126 +130,175 @@ export const onRequest: PagesFunction<Env> = async (context) => {
             );
         }
 
-        // Gemini API 호출 (gemini-2.0-flash - 빠르고 저렴)
-        const geminiResponse = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [
-                            {
-                                inlineData: {
-                                    mimeType: mimeType || 'image/png',
-                                    data: image,
-                                },
+        // Gemini API 호출 (재시도 로직 포함)
+        let lastError: any = null;
+
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            console.log(`🔍 얼굴 분석 API 시도 ${attempt}/${MAX_RETRIES}`);
+
+            try {
+                const geminiResponse = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            contents: [{
+                                parts: [
+                                    {
+                                        inlineData: {
+                                            mimeType: mimeType || 'image/png',
+                                            data: image,
+                                        },
+                                    },
+                                    { text: ANALYSIS_PROMPT },
+                                ],
+                            }],
+                            generationConfig: {
+                                temperature: 0.2,
+                                topK: 40,
+                                topP: 0.8,
+                                maxOutputTokens: 2048,
                             },
-                            { text: ANALYSIS_PROMPT },
-                        ],
-                    }],
-                    generationConfig: {
-                        temperature: 0.2,
-                        topK: 40,
-                        topP: 0.8,
-                        maxOutputTokens: 2048,
-                    },
-                }),
-            }
-        );
-
-        if (!geminiResponse.ok) {
-            const errorText = await geminiResponse.text();
-            console.error('Gemini API Error:', errorText);
-
-            // 429 Rate Limit 에러 처리
-            if (geminiResponse.status === 429) {
-                let retryAfter = 60; // 기본 60초
-                try {
-                    const errorJson = JSON.parse(errorText);
-                    // RetryInfo에서 대기 시간 추출
-                    const retryInfo = errorJson.error?.details?.find(
-                        (d: any) => d['@type']?.includes('RetryInfo')
-                    );
-                    if (retryInfo?.retryDelay) {
-                        const match = retryInfo.retryDelay.match(/(\d+)/);
-                        if (match) retryAfter = parseInt(match[1], 10);
+                        }),
                     }
-                } catch (e) {
-                    // JSON 파싱 실패 시 기본값 사용
+                );
+
+                if (!geminiResponse.ok) {
+                    const errorText = await geminiResponse.text();
+                    console.error(`Gemini API Error (attempt ${attempt}):`, errorText);
+
+                    // 429 Rate Limit 에러 처리 - 재시도하지 않고 바로 반환
+                    if (geminiResponse.status === 429) {
+                        let retryAfter = 60;
+                        try {
+                            const errorJson = JSON.parse(errorText);
+                            const retryInfo = errorJson.error?.details?.find(
+                                (d: any) => d['@type']?.includes('RetryInfo')
+                            );
+                            if (retryInfo?.retryDelay) {
+                                const match = retryInfo.retryDelay.match(/(\d+)/);
+                                if (match) retryAfter = parseInt(match[1], 10);
+                            }
+                        } catch (e) {
+                            // JSON 파싱 실패 시 기본값 사용
+                        }
+
+                        return new Response(
+                            JSON.stringify({
+                                error: 'RATE_LIMIT_EXCEEDED',
+                                message: 'API 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요.',
+                                retryAfter: retryAfter
+                            }),
+                            { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                        );
+                    }
+
+                    // 5xx 서버 에러는 재시도
+                    if (geminiResponse.status >= 500 && attempt < MAX_RETRIES) {
+                        console.log(`⏳ 서버 에러, ${RETRY_DELAY_MS}ms 후 재시도...`);
+                        await delay(RETRY_DELAY_MS);
+                        lastError = new Error(`Gemini API error: ${geminiResponse.status}`);
+                        continue;
+                    }
+
+                    return new Response(
+                        JSON.stringify({ error: 'Gemini API error', details: errorText }),
+                        { status: geminiResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                    );
                 }
 
+                const geminiData = await geminiResponse.json() as GeminiResponse;
+
+                // 텍스트 응답 추출
+                const textPart = geminiData.candidates?.[0]?.content?.parts?.find(p => p.text);
+                if (!textPart?.text) {
+                    // 응답 없음 - 재시도
+                    if (attempt < MAX_RETRIES) {
+                        console.log(`⚠️ 분석 결과 없음, ${RETRY_DELAY_MS}ms 후 재시도...`);
+                        await delay(RETRY_DELAY_MS);
+                        lastError = new Error('No analysis result from AI');
+                        continue;
+                    }
+                    return new Response(
+                        JSON.stringify({ error: 'No analysis result from AI' }),
+                        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                    );
+                }
+
+                // JSON 파싱 시도
+                let analysisResult;
+                try {
+                    let jsonText = textPart.text.trim();
+                    if (jsonText.startsWith('```json')) {
+                        jsonText = jsonText.slice(7);
+                    } else if (jsonText.startsWith('```')) {
+                        jsonText = jsonText.slice(3);
+                    }
+                    if (jsonText.endsWith('```')) {
+                        jsonText = jsonText.slice(0, -3);
+                    }
+                    jsonText = jsonText.trim();
+
+                    analysisResult = JSON.parse(jsonText);
+                } catch (parseError) {
+                    console.error(`JSON parse error (attempt ${attempt}):`, parseError);
+                    // JSON 파싱 실패 - 재시도
+                    if (attempt < MAX_RETRIES) {
+                        console.log(`⚠️ JSON 파싱 실패, ${RETRY_DELAY_MS}ms 후 재시도...`);
+                        await delay(RETRY_DELAY_MS);
+                        lastError = parseError;
+                        continue;
+                    }
+                    return new Response(
+                        JSON.stringify({
+                            error: 'Failed to parse AI response',
+                            rawResponse: textPart.text.substring(0, 500)
+                        }),
+                        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                    );
+                }
+
+                // 필수 필드 검증
+                if (!analysisResult.faceShape || !analysisResult.recommendations) {
+                    // 필수 필드 없음 - 재시도
+                    if (attempt < MAX_RETRIES) {
+                        console.log(`⚠️ 필수 필드 누락, ${RETRY_DELAY_MS}ms 후 재시도...`);
+                        await delay(RETRY_DELAY_MS);
+                        lastError = new Error('Invalid analysis result structure');
+                        continue;
+                    }
+                    return new Response(
+                        JSON.stringify({ error: 'Invalid analysis result structure' }),
+                        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                    );
+                }
+
+                console.log(`✅ 얼굴 분석 성공 (시도 ${attempt}/${MAX_RETRIES})`);
                 return new Response(
                     JSON.stringify({
-                        error: 'RATE_LIMIT_EXCEEDED',
-                        message: 'API 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요.',
-                        retryAfter: retryAfter
+                        success: true,
+                        analysis: analysisResult
                     }),
-                    { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
                 );
+
+            } catch (error: any) {
+                // 네트워크 에러 등 - 재시도
+                if (attempt < MAX_RETRIES) {
+                    console.log(`⚠️ 에러 발생, ${RETRY_DELAY_MS}ms 후 재시도...`, error.message);
+                    await delay(RETRY_DELAY_MS);
+                    lastError = error;
+                    continue;
+                }
+                throw error;
             }
-
-            return new Response(
-                JSON.stringify({ error: 'Gemini API error', details: errorText }),
-                { status: geminiResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
         }
 
-        const geminiData = await geminiResponse.json() as GeminiResponse;
-
-        // 텍스트 응답 추출
-        const textPart = geminiData.candidates?.[0]?.content?.parts?.find(p => p.text);
-        if (!textPart?.text) {
-            return new Response(
-                JSON.stringify({ error: 'No analysis result from AI' }),
-                { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-        }
-
-        // JSON 파싱 시도
-        let analysisResult;
-        try {
-            // 마크다운 코드 블록 제거
-            let jsonText = textPart.text.trim();
-            if (jsonText.startsWith('```json')) {
-                jsonText = jsonText.slice(7);
-            } else if (jsonText.startsWith('```')) {
-                jsonText = jsonText.slice(3);
-            }
-            if (jsonText.endsWith('```')) {
-                jsonText = jsonText.slice(0, -3);
-            }
-            jsonText = jsonText.trim();
-
-            analysisResult = JSON.parse(jsonText);
-        } catch (parseError) {
-            console.error('JSON parse error:', parseError, 'Raw text:', textPart.text);
-            return new Response(
-                JSON.stringify({
-                    error: 'Failed to parse AI response',
-                    rawResponse: textPart.text.substring(0, 500)
-                }),
-                { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-        }
-
-        // 필수 필드 검증
-        if (!analysisResult.faceShape || !analysisResult.recommendations) {
-            return new Response(
-                JSON.stringify({ error: 'Invalid analysis result structure' }),
-                { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-        }
-
-        return new Response(
-            JSON.stringify({
-                success: true,
-                analysis: analysisResult
-            }),
-            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        // 모든 재시도 실패
+        throw lastError || new Error('All retries failed');
 
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { HairstyleDetail } from '../services/hairstyleData';
+import { ShareModal } from './ShareModal';
 
 interface StyleDetailPanelProps {
     style: HairstyleDetail;
@@ -20,6 +21,7 @@ export const StyleDetailPanel: React.FC<StyleDetailPanelProps> = ({
 }) => {
     const [croppedImage, setCroppedImage] = useState<string | null>(null);
     const [saved, setSaved] = useState(false);
+    const [showShareModal, setShowShareModal] = useState(false);
     const panelRef = useRef<HTMLDivElement>(null);
     const buttonGroupRef = useRef<HTMLDivElement>(null);
 
@@ -166,24 +168,16 @@ export const StyleDetailPanel: React.FC<StyleDetailPanelProps> = ({
         }
     };
 
-    // 공유하기 핸들러
-    const handleShare = async () => {
-        const shareData = {
-            title: `헤어디렉터 - ${styleName || style.name}`,
-            text: `[헤어디렉터 AI 분석]\n내 얼굴형에 딱 맞는 인생 머리: ${styleName || style.name}\n\n"${style.description}"\n\n지금 바로 AI 얼굴형 분석을 받아보세요!`,
-            url: window.location.href,
-        };
+    // 공유하기 핸들러 - 모달 열기
+    const handleShare = () => {
+        setShowShareModal(true);
+    };
 
-        try {
-            if (navigator.share) {
-                await navigator.share(shareData);
-            } else {
-                await navigator.clipboard.writeText(`${shareData.title}\n${shareData.text}\n${shareData.url}`);
-                alert('공유 텍스트가 클립보드에 복사되었습니다!\n원하는 곳에 붙여넣기 해보세요.');
-            }
-        } catch (error) {
-            console.error('Sharing failed:', error);
-        }
+    // 공유 데이터
+    const shareData = {
+        title: `헤어디렉터 AI 추천 - ${styleName || style.name}`,
+        text: `내 얼굴형에 딱 맞는 인생 머리: ${styleName || style.name}\n\n"${style.description}"\n\n나에게 딱 맞는 인생 헤어스타일 찾기`,
+        url: 'https://hairdirector.site',
     };
 
     return (
@@ -359,6 +353,16 @@ export const StyleDetailPanel: React.FC<StyleDetailPanelProps> = ({
                     </div>
                 </div>
             </div>
+
+            {/* 공유 모달 */}
+            <ShareModal
+                isOpen={showShareModal}
+                onClose={() => setShowShareModal(false)}
+                title={shareData.title}
+                text={shareData.text}
+                url={shareData.url}
+                imageUrl={croppedImage || undefined}
+            />
         </div>
     );
 };

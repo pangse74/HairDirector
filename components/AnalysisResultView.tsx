@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { FaceAnalysisResult, FaceShape } from '../types';
 import { sendAnalysisReport, isValidEmail } from '../services/emailService';
+import { ShareModal } from './ShareModal';
 
 interface Props {
   analysisResult: FaceAnalysisResult;
@@ -119,6 +120,13 @@ const STYLE_ID_MAP: Record<string, string> = {
   "빌드펌": "build", "스왈로펌": "swallow",
 };
 
+// 자동 저장 완료 여부를 sessionStorage에 저장하기 위한 키 생성
+const getAutoSaveKey = (resultImage: string) => {
+  // resultImage의 해시를 생성하여 고유 키로 사용
+  const hash = resultImage.substring(resultImage.length - 50);
+  return `hairdirector_autosave_done_${hash}`;
+};
+
 export const AnalysisResultView: React.FC<Props> = ({
   analysisResult,
   originalImage,
@@ -131,8 +139,31 @@ export const AnalysisResultView: React.FC<Props> = ({
   const reportRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const summaryCardRef = useRef<HTMLDivElement>(null);  // 분석 요약 카드 ref
-  const [autoSaveComplete, setAutoSaveComplete] = useState(false);
+
+  // sessionStorage에서 자동 저장 완료 여부 확인
+  const getInitialAutoSaveState = () => {
+    if (!resultImage) return false;
+    try {
+      return sessionStorage.getItem(getAutoSaveKey(resultImage)) === 'true';
+    } catch {
+      return false;
+    }
+  };
+
+  const [autoSaveComplete, setAutoSaveComplete] = useState(getInitialAutoSaveState);
   const [selectedStyle, setSelectedStyle] = useState<number | null>(null);
+
+  // resultImage가 변경될 때 (새 분석 시) autoSaveComplete 상태 업데이트
+  useEffect(() => {
+    if (resultImage) {
+      try {
+        const saved = sessionStorage.getItem(getAutoSaveKey(resultImage)) === 'true';
+        setAutoSaveComplete(saved);
+      } catch {
+        setAutoSaveComplete(false);
+      }
+    }
+  }, [resultImage]);
 
   // 이메일 전송 상태
   const [emailInput, setEmailInput] = useState(userEmail || '');
@@ -140,6 +171,7 @@ export const AnalysisResultView: React.FC<Props> = ({
   const [emailSent, setEmailSent] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [autoEmailSent, setAutoEmailSent] = useState(false); // 자동 전송 완료 여부
+  const [showShareModal, setShowShareModal] = useState(false); // 공유 모달 상태
 
   const {
     faceShape,
@@ -262,6 +294,12 @@ export const AnalysisResultView: React.FC<Props> = ({
           }
 
           setAutoSaveComplete(true);
+          // sessionStorage에 자동 저장 완료 상태 저장 (탭 전환 시에도 유지)
+          try {
+            sessionStorage.setItem(getAutoSaveKey(resultImage), 'true');
+          } catch (e) {
+            console.warn('sessionStorage 저장 실패:', e);
+          }
           console.log('🎉 자동 저장 완료 (총 4개 파일)');
         } catch (error) {
           console.error('자동 저장 실패:', error);
@@ -383,24 +421,16 @@ ${stylingTips.slice(0, 3).map(t => `- ${t}`).join('\n')}
     }
   };
 
-  // 공유하기 핸들러
-  const handleShare = async () => {
-    const shareData = {
-      title: '헤어디렉터 AI 얼굴형 분석 리포트',
-      text: `[헤어디렉터]\n내 얼굴형 분석 결과: ${faceShapeKo} (${skinToneKo})\n추천 스타일 BEST 5 확인하기!`,
-      url: window.location.href,
-    };
+  // 공유하기 핸들러 - 모달 열기
+  const handleShare = () => {
+    setShowShareModal(true);
+  };
 
-    try {
-      if (navigator.share) {
-        await navigator.share(shareData);
-      } else {
-        await navigator.clipboard.writeText(`${shareData.text}\n${shareData.url}`);
-        alert('공유 텍스트가 클립보드에 복사되었습니다!\n원하는 곳에 붙여넣기 해보세요.');
-      }
-    } catch (error) {
-      console.error('Share failed:', error);
-    }
+  // 공유 데이터
+  const shareData = {
+    title: '헤어디렉터 AI 얼굴형 분석 리포트',
+    text: `내 얼굴형 분석 결과: ${faceShapeKo} (${skinToneKo})\n\n추천 스타일 TOP 5:\n${STYLES.slice(0, 5).map((s, i) => `${i + 1}. ${s}`).join('\n')}\n\n나에게 딱 맞는 인생 헤어스타일 찾기`,
+    url: 'https://hairdirector.site',
   };
 
   // 이메일 전송 핸들러
@@ -825,6 +855,16 @@ ${stylingTips.slice(0, 3).map(t => `- ${t}`).join('\n')}
           </div>
         </div>
       </div>
+
+      {/* 공유 모달 */}
+      <ShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        title={shareData.title}
+        text={shareData.text}
+        url={shareData.url}
+        imageUrl={originalImage}
+      />
     </div>
   );
 };
