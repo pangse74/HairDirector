@@ -170,9 +170,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
                     const errorText = await geminiResponse.text();
                     console.error(`Gemini API Error (attempt ${attempt}):`, errorText);
 
-                    // 429 Rate Limit 에러 처리 - 재시도하지 않고 바로 반환
+                    // 429 Rate Limit 에러 처리 - 재시도
                     if (geminiResponse.status === 429) {
-                        let retryAfter = 60;
+                        let retryAfter = 3000; // 기본 3초 대기
                         try {
                             const errorJson = JSON.parse(errorText);
                             const retryInfo = errorJson.error?.details?.find(
@@ -180,20 +180,35 @@ export const onRequest: PagesFunction<Env> = async (context) => {
                             );
                             if (retryInfo?.retryDelay) {
                                 const match = retryInfo.retryDelay.match(/(\d+)/);
-                                if (match) retryAfter = parseInt(match[1], 10);
+                                if (match) retryAfter = parseInt(match[1], 10) * 1000;
                             }
                         } catch (e) {
                             // JSON 파싱 실패 시 기본값 사용
+                        }
+
+                        if (attempt < MAX_RETRIES) {
+                            console.log(`⏳ Rate Limit, ${retryAfter}ms 후 재시도...`);
+                            await delay(retryAfter);
+                            lastError = new Error(`Rate limit exceeded`);
+                            continue;
                         }
 
                         return new Response(
                             JSON.stringify({
                                 error: 'RATE_LIMIT_EXCEEDED',
                                 message: 'API 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요.',
-                                retryAfter: retryAfter
+                                retryAfter: retryAfter / 1000
                             }),
                             { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
                         );
+                    }
+
+                    // 4xx 클라이언트 에러도 재시도 (일시적 문제일 수 있음)
+                    if (geminiResponse.status >= 400 && geminiResponse.status < 500 && attempt < MAX_RETRIES) {
+                        console.log(`⏳ 클라이언트 에러 ${geminiResponse.status}, ${RETRY_DELAY_MS}ms 후 재시도...`);
+                        await delay(RETRY_DELAY_MS);
+                        lastError = new Error(`Gemini API error: ${geminiResponse.status}`);
+                        continue;
                     }
 
                     // 5xx 서버 에러는 재시도
