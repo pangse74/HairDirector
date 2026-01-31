@@ -17,7 +17,7 @@ import { LanguageSelector } from './components/LanguageSelector';
 import { PrivacyView } from './components/PrivacyView';
 import { TermsView } from './components/TermsView';
 import { RefundView } from './components/RefundView';
-import { ShareModal } from './components/ShareModal';
+import { generateMockAnalysis, getMockStyleNames } from './services/mockAnalysisService';
 
 const App: React.FC = () => {
   const { t, language } = useLanguage();
@@ -45,7 +45,7 @@ const App: React.FC = () => {
   const [isPremium, setIsPremium] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null); // 결제 시 입력한 이메일
-  const [showTestShareModal, setShowTestShareModal] = useState(false); // 테스트용 공유 모달
+  const [isDemoMode, setIsDemoMode] = useState(false); // 무료 체험 모드
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -496,6 +496,39 @@ const App: React.FC = () => {
     }
   }, [originalImage, isPremium, userEmail]);
 
+  // 무료 체험 분석 시작 핸들러
+  const handleStartDemoAnalysis = useCallback(async () => {
+    if (!originalImage) return;
+
+    // 데모 모드 설정
+    setIsDemoMode(true);
+
+    // 상태 초기화
+    setResultImage(null);
+    setErrorMessage(null);
+
+    setState(AppState.ANALYZING);
+
+    // 로딩 시뮬레이션 (1.5초)
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    // Mock 분석 결과 생성
+    const mockAnalysis = generateMockAnalysis();
+    setAnalysisResult(mockAnalysis);
+    setRecommendedStyles(getMockStyleNames());
+
+    setState(AppState.GENERATING);
+
+    // 이미지 생성 시뮬레이션 (1초)
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // 데모용 그리드 이미지 설정
+    setResultImage('/demo-grid.png');
+
+    setState(AppState.COMPLETED);
+    setActiveTab('report');
+  }, [originalImage]);
+
   // [추가] 결제 후 자동 시작 감지용 Effect (handleStartAnalysis 정의 이후에 배치)
   useEffect(() => {
     // sessionStorage 체크를 가장 먼저 수행하여 불필요한 실행 방지
@@ -513,7 +546,7 @@ const App: React.FC = () => {
   }, [originalImage, isPremium]); // handleStartAnalysis 제거하여 루프 방지
 
   const handleReset = () => {
-    // 리셋 시 세션 정보도 삭제할지 고민 필요. 
+    // 리셋 시 세션 정보도 삭제할지 고민 필요.
     // 사용자가 의도적으로 '새로 하기'를 누른 것이므로 삭제하는 것이 맞음.
     if (window.confirm("정말 처음화면으로 돌아가시겠습니까? 현재 분석 결과는 히스토리 탭에 저장되어 있습니다.")) {
       sessionStorage.removeItem('hairfit_last_session');
@@ -523,6 +556,7 @@ const App: React.FC = () => {
       setErrorMessage(null);
       setAnalysisResult(null);
       setRecommendedStyles([]);
+      setIsDemoMode(false);
     }
   };
 
@@ -587,6 +621,8 @@ const App: React.FC = () => {
           onStyleClick={handleStyleClick}
           styles={recommendedStyles}
           userEmail={userEmail}
+          isDemoMode={isDemoMode}
+          onPaymentClick={() => setShowPaymentModal(true)}
         />
       );
     }
@@ -652,6 +688,15 @@ const App: React.FC = () => {
 
             {/* 버튼 그룹 */}
             <div className="w-full max-w-sm space-y-3">
+              {/* 무료 체험 버튼 */}
+              <button
+                onClick={handleStartDemoAnalysis}
+                className="w-full py-4 rounded-2xl bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-bold text-lg flex items-center justify-center gap-3 hover:opacity-90 transition-all shadow-lg shadow-yellow-500/20"
+              >
+                <i className="fas fa-flask"></i>
+                무료 체험하기
+              </button>
+
               {/* 분석 시작 버튼 */}
               <button
                 onClick={handleStartAnalysis}
@@ -1014,50 +1059,6 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* 테스트용 공유 버튼 (개발 후 삭제) */}
-      <button
-        onClick={() => setShowTestShareModal(true)}
-        style={{
-          position: 'fixed',
-          bottom: '100px',
-          right: '16px',
-          zIndex: 99999,
-          width: '60px',
-          height: '60px',
-          borderRadius: '50%',
-          background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
-          color: 'white',
-          border: 'none',
-          boxShadow: '0 4px 20px rgba(124, 58, 237, 0.5)',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '24px',
-        }}
-        title="공유 테스트"
-      >
-        <i className="fas fa-share-alt"></i>
-      </button>
-
-      {/* 테스트용 공유 모달 */}
-      <ShareModal
-        isOpen={showTestShareModal}
-        onClose={() => setShowTestShareModal(false)}
-        title="헤어디렉터 AI 얼굴형 분석 리포트"
-        text="내 얼굴형 분석 결과: 둥근형 (중간 톤)
-
-추천 스타일 TOP 5:
-1. 쉐도우펌
-2. 가르마펌
-3. 댄디컷
-4. 애즈펌
-5. 텍스쳐드펌
-
-나에게 딱 맞는 인생 헤어스타일 찾기"
-        url="https://hairdirector.site"
-      />
 
       {/* 카메라 촬영 화면 */}
       {showCamera && (

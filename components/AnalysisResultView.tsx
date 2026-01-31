@@ -11,6 +11,8 @@ interface Props {
   onStyleClick?: (styleId: string, styleIndex?: number, styleName?: string, gridImage?: string) => void;
   styles?: string[];  // 추천 스타일 목록
   userEmail?: string | null;  // 결제 시 입력한 이메일
+  isDemoMode?: boolean;  // 무료 체험 모드
+  onPaymentClick?: () => void;  // 결제 버튼 클릭 핸들러
 }
 
 // 얼굴형 아이콘 매핑
@@ -135,6 +137,8 @@ export const AnalysisResultView: React.FC<Props> = ({
   onStyleClick,
   styles,
   userEmail,
+  isDemoMode = false,
+  onPaymentClick,
 }) => {
   const reportRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -194,8 +198,9 @@ export const AnalysisResultView: React.FC<Props> = ({
   const STYLES = styles && styles.length === 9 ? styles : recommendations.slice(0, 9).map(r => r.name);
 
   // 자동 저장 기능 (결과 이미지가 있을 때 실행) - 4단계 순차 저장
+  // 데모 모드에서는 자동 저장 비활성화
   useEffect(() => {
-    if (resultImage && !autoSaveComplete) {
+    if (resultImage && !autoSaveComplete && !isDemoMode) {
       const autoSaveAll = async () => {
         const timestamp = new Date().toISOString().split('T')[0];
 
@@ -310,11 +315,12 @@ export const AnalysisResultView: React.FC<Props> = ({
       const timer = setTimeout(autoSaveAll, 1000);
       return () => clearTimeout(timer);
     }
-  }, [resultImage, autoSaveComplete]);
+  }, [resultImage, autoSaveComplete, isDemoMode]);
 
   // 결제 시 입력한 이메일이 있으면 자동으로 리포트 전송
+  // 데모 모드에서는 이메일 전송 비활성화
   useEffect(() => {
-    if (userEmail && resultImage && !autoEmailSent && !emailSent) {
+    if (userEmail && resultImage && !autoEmailSent && !emailSent && !isDemoMode) {
       const autoSendEmail = async () => {
         console.log('📧 결제 이메일로 자동 리포트 전송 시작:', userEmail);
         setEmailSending(true);
@@ -345,7 +351,7 @@ export const AnalysisResultView: React.FC<Props> = ({
       const timer = setTimeout(autoSendEmail, 2000);
       return () => clearTimeout(timer);
     }
-  }, [userEmail, resultImage, autoEmailSent, emailSent, analysisResult]);
+  }, [userEmail, resultImage, autoEmailSent, emailSent, analysisResult, isDemoMode]);
 
   // 수동 다운로드 핸들러 (전체 리포트 캡처)
   const handleDownload = async () => {
@@ -471,6 +477,18 @@ ${stylingTips.slice(0, 3).map(t => `- ${t}`).join('\n')}
 
   return (
     <div className="flex flex-col h-full w-full">
+      {/* 데모 모드 상단 배너 */}
+      {isDemoMode && (
+        <div className="sticky top-0 z-10 w-full px-4 py-3 bg-yellow-500/20 border-b border-yellow-500/30">
+          <div className="flex items-center justify-center gap-2">
+            <i className="fas fa-flask text-yellow-400"></i>
+            <span className="text-yellow-300 text-sm font-bold">
+              무료 체험 버전 - 실제 분석 결과가 아닙니다
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* 헤더 */}
       <header className="w-full flex items-center justify-between px-5 py-4 border-b border-white/5">
         <button
@@ -479,7 +497,9 @@ ${stylingTips.slice(0, 3).map(t => `- ${t}`).join('\n')}
         >
           <i className="fas fa-arrow-left"></i>
         </button>
-        <span className="text-white font-bold">AI 얼굴형 분석 리포트</span>
+        <span className="text-white font-bold">
+          {isDemoMode ? '무료 체험 리포트' : 'AI 얼굴형 분석 리포트'}
+        </span>
         <div className="w-8"></div>
       </header>
 
@@ -696,8 +716,8 @@ ${stylingTips.slice(0, 3).map(t => `- ${t}`).join('\n')}
                 </div>
               </div>
 
-              {/* 자동 저장 완료 알림 */}
-              {autoSaveComplete && (
+              {/* 자동 저장 완료 알림 - 데모 모드에서는 숨김 */}
+              {autoSaveComplete && !isDemoMode && (
                 <div className="mt-3 p-3 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center gap-2">
                   <i className="fas fa-check-circle text-green-400"></i>
                   <span className="text-green-300 text-sm">4개 이미지 자동 저장 완료!</span>
@@ -799,18 +819,39 @@ ${stylingTips.slice(0, 3).map(t => `- ${t}`).join('\n')}
             </div>
           )}
 
+          {/* 데모 모드 CTA 섹션 */}
+          {isDemoMode && (
+            <div className="p-6 rounded-2xl bg-gradient-to-br from-violet-600/20 to-purple-600/20 border border-violet-500/30">
+              <h3 className="text-white font-bold text-lg mb-2 text-center">
+                나만의 맞춤 분석받기
+              </h3>
+              <p className="text-gray-400 text-sm text-center mb-4">
+                실제 AI 분석으로 나에게 딱 맞는 헤어스타일을 찾아보세요
+              </p>
+              <button
+                onClick={onPaymentClick}
+                className="w-full py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-lg shadow-violet-500/30"
+              >
+                <i className="fas fa-magic"></i>
+                나만의 맞춤 분석받기
+              </button>
+            </div>
+          )}
+
           {/* 하단 버튼 */}
           <div className="pt-4 space-y-3">
-            {/* [추가] 텍스트 복사 버튼 */}
-            <button
-              onClick={handleCopyReport}
-              className="w-full py-3 rounded-2xl bg-gradient-to-r from-gray-700 to-gray-600 text-white font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-all border border-white/10"
-            >
-              <i className="fas fa-copy"></i>
-              리포트 텍스트 복사 (공유용)
-            </button>
+            {/* [추가] 텍스트 복사 버튼 - 데모 모드에서는 숨김 */}
+            {!isDemoMode && (
+              <button
+                onClick={handleCopyReport}
+                className="w-full py-3 rounded-2xl bg-gradient-to-r from-gray-700 to-gray-600 text-white font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-all border border-white/10"
+              >
+                <i className="fas fa-copy"></i>
+                리포트 텍스트 복사 (공유용)
+              </button>
+            )}
 
-            {resultImage && (
+            {resultImage && !isDemoMode && (
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={handleShare}
@@ -836,8 +877,8 @@ ${stylingTips.slice(0, 3).map(t => `- ${t}`).join('\n')}
               새로운 사진으로 다시하기
             </button>
 
-            {/* 팁 카드 */}
-            {resultImage && (
+            {/* 팁 카드 - 데모 모드에서는 숨김 */}
+            {resultImage && !isDemoMode && (
               <div className="p-4 rounded-2xl bg-violet-500/10 border border-violet-500/20">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center flex-shrink-0">
