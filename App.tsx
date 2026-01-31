@@ -726,9 +726,7 @@ const App: React.FC = () => {
         {/* 헤더 */}
         <header className="flex items-center justify-between px-5 py-4">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center">
-              <i className="fas fa-robot text-white text-sm"></i>
-            </div>
+            <img src="/favicon-32x32.png" alt="헤어디렉터" className="w-8 h-8 rounded-lg" />
             <span className="text-white font-bold text-lg">{t.common.appName}</span>
           </div>
           <div className="flex items-center gap-2">
