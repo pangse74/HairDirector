@@ -149,8 +149,12 @@ export const shareKakao = async (options: {
         return false;
     }
 
-    // 이미지 URL 없이 테스트
-    console.log('📤 카카오 공유 시도 (이미지 없음):', { title, description, url });
+    // 이미지 URL 처리: base64는 사용 불가, 외부 URL만 사용 가능
+    // base64이거나 로컬 경로면 기본 OG 이미지 사용
+    const isValidHttpUrl = imageUrl && (imageUrl.startsWith('http://') || imageUrl.startsWith('https://'));
+    const finalImageUrl = isValidHttpUrl ? imageUrl : 'https://hairdirector.site/og-image.png';
+
+    console.log('📤 카카오 공유 시도:', { title, description, url, imageUrl: finalImageUrl });
 
     try {
         // Kakao SDK v2는 Promise를 반환
@@ -159,7 +163,7 @@ export const shareKakao = async (options: {
             content: {
                 title,
                 description,
-                imageUrl: 'https://hairdirector.site/og-image.png',
+                imageUrl: finalImageUrl,
                 link: {
                     mobileWebUrl: url,
                     webUrl: url,
