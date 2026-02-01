@@ -20,10 +20,13 @@ interface ShareOption {
 }
 
 // 이미지를 압축하여 Blob으로 변환 (카카오톡 등에서 공유 가능하도록)
-const compressImage = (imageSrc: string, maxWidth: number = 1024, quality: number = 0.8): Promise<Blob | null> => {
+const compressImage = (imageSrc: string, maxWidth: number = 800, quality: number = 0.7): Promise<Blob | null> => {
     return new Promise((resolve) => {
         const img = new Image();
-        img.crossOrigin = 'anonymous';
+        // base64는 crossOrigin 불필요, URL만 필요
+        if (!imageSrc.startsWith('data:')) {
+            img.crossOrigin = 'anonymous';
+        }
 
         img.onload = () => {
             const canvas = document.createElement('canvas');
@@ -163,48 +166,54 @@ export const ShareModal: React.FC<ShareModalProps> = ({
         if (isSharing) return;
         setIsSharing(true);
 
-        console.log('🚀 네이티브 공유 시작');
-        console.log('📌 imageUrl:', imageUrl ? imageUrl.substring(0, 50) + '...' : 'null');
-        console.log('📌 supportsNativeShare:', supportsNativeShare);
+        // 디버그 정보 수집
+        const debugInfo = {
+            hasNavigatorShare: !!navigator.share,
+            hasNavigatorCanShare: !!navigator.canShare,
+            supportsNativeShare,
+            imageUrlType: imageUrl ? (imageUrl.startsWith('data:') ? 'base64' : 'url') : 'none',
+        };
+        console.log('🚀 네이티브 공유 시작:', debugInfo);
 
         try {
-            // 1. 이미지가 있고 파일 공유 가능한 경우 - 이미지 직접 공유
-            if (imageUrl && supportsNativeShare) {
-                console.log('📸 이미지 파일 변환 시도...');
-                const file = await imageUrlToFile(imageUrl, 'hairdirector-result.png');
-
-                if (file && file.size > 0) {
-                    console.log('📁 파일 생성됨:', file.name, file.size, 'bytes');
-
-                    if (navigator.canShare?.({ files: [file] })) {
-                        console.log('✅ 파일 공유 가능, 공유 시작...');
-                        await navigator.share({
-                            title: title,
-                            text: text,
-                            files: [file]
-                        });
-                        console.log('✅ 네이티브 이미지 공유 성공');
-                        onClose();
-                        return;
-                    } else {
-                        console.log('⚠️ 이 파일은 공유할 수 없음, URL 공유로 폴백');
-                    }
-                } else {
-                    console.log('⚠️ 파일 변환 실패 또는 빈 파일, URL 공유로 폴백');
-                }
-            }
-
-            // 2. 파일 공유 불가 시 - URL만 공유
+            // 먼저 URL만 공유 시도 (가장 안정적)
             if (navigator.share) {
                 console.log('🔗 URL 공유 시도...');
+
+                // 이미지가 있고 파일 공유 가능한 경우 - 이미지 포함
+                if (imageUrl && supportsNativeShare) {
+                    console.log('📸 이미지 파일 변환 시도...');
+                    const file = await imageUrlToFile(imageUrl, 'hairdirector-result.jpg');
+
+                    if (file && file.size > 0 && file.size < 5 * 1024 * 1024) { // 5MB 이하만
+                        console.log('📁 파일 생성됨:', file.name, file.size, 'bytes');
+
+                        try {
+                            if (navigator.canShare({ files: [file] })) {
+                                await navigator.share({
+                                    title: title,
+                                    text: text,
+                                    files: [file]
+                                });
+                                console.log('✅ 이미지 공유 성공');
+                                onClose();
+                                return;
+                            }
+                        } catch (fileShareError) {
+                            console.log('⚠️ 이미지 공유 실패, URL 공유로 폴백:', fileShareError);
+                        }
+                    }
+                }
+
+                // 이미지 공유 실패 시 URL만 공유
                 await navigator.share({ title, text, url });
-                console.log('✅ 네이티브 URL 공유 성공');
+                console.log('✅ URL 공유 성공');
                 onClose();
                 return;
             }
 
-            // 3. 네이티브 공유 불가 시 - 클립보드 복사
-            console.log('📋 클립보드 복사로 폴백');
+            // navigator.share 미지원 시 - 클립보드 복사
+            console.log('📋 navigator.share 미지원, 클립보드 복사');
             await navigator.clipboard.writeText(fullText);
             showToast('클립보드에 복사되었습니다!');
         } catch (error: any) {
