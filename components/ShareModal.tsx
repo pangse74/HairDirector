@@ -19,16 +19,38 @@ interface ShareOption {
     bgColor: string;
 }
 
-const SHARE_OPTIONS: ShareOption[] = [
-    { id: 'kakao', name: '카카오톡', icon: 'fas fa-comment', color: '#3C1E1E', bgColor: '#FEE500' },
-    { id: 'facebook', name: '페이스북', icon: 'fab fa-facebook-f', color: '#fff', bgColor: '#1877F2' },
-    { id: 'twitter', name: 'X', icon: 'fab fa-x-twitter', color: '#fff', bgColor: '#000000' },
-    { id: 'instagram', name: '인스타그램', icon: 'fab fa-instagram', color: '#fff', bgColor: 'linear-gradient(45deg, #f09433, #dc2743, #bc1888)' },
-    { id: 'telegram', name: '텔레그램', icon: 'fab fa-telegram', color: '#fff', bgColor: '#0088CC' },
-    { id: 'tiktok', name: '틱톡', icon: 'fab fa-tiktok', color: '#fff', bgColor: '#000000' },
-    { id: 'copy', name: '링크 복사', icon: 'fas fa-link', color: '#fff', bgColor: '#6B7280' },
-    { id: 'more', name: '더보기', icon: 'fas fa-share-nodes', color: '#fff', bgColor: '#374151' },
-];
+// 이미지 URL(base64 포함)을 File 객체로 변환
+const imageUrlToFile = async (imageUrl: string, fileName: string = 'hairstyle-result.png'): Promise<File | null> => {
+    try {
+        // base64 데이터인 경우
+        if (imageUrl.startsWith('data:')) {
+            const response = await fetch(imageUrl);
+            const blob = await response.blob();
+            return new File([blob], fileName, { type: blob.type || 'image/png' });
+        }
+
+        // 일반 URL인 경우
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        return new File([blob], fileName, { type: blob.type || 'image/png' });
+    } catch (error) {
+        console.error('이미지 변환 실패:', error);
+        return null;
+    }
+};
+
+// 네이티브 파일 공유 지원 여부 확인
+const canShareFiles = (): boolean => {
+    if (!navigator.canShare) return false;
+
+    // 테스트용 더미 파일로 확인
+    try {
+        const testFile = new File(['test'], 'test.png', { type: 'image/png' });
+        return navigator.canShare({ files: [testFile] });
+    } catch {
+        return false;
+    }
+};
 
 export const ShareModal: React.FC<ShareModalProps> = ({
     isOpen,
@@ -41,12 +63,15 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     const [copied, setCopied] = useState(false);
     const [toast, setToast] = useState<string | null>(null);
     const [kakaoReady, setKakaoReady] = useState(false);
+    const [isSharing, setIsSharing] = useState(false);
+    const [supportsNativeShare, setSupportsNativeShare] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
             const init = async () => {
                 const result = await initKakao();
                 setKakaoReady(result);
+                setSupportsNativeShare(canShareFiles());
             };
             init();
         }
@@ -64,11 +89,63 @@ export const ShareModal: React.FC<ShareModalProps> = ({
         setTimeout(() => setToast(null), 2500);
     };
 
+    // 네이티브 이미지 공유 (핵심 기능)
+    const handleNativeShare = async () => {
+        if (isSharing) return;
+        setIsSharing(true);
+
+        try {
+            // 1. 이미지가 있고 파일 공유 가능한 경우 - 이미지 직접 공유
+            if (imageUrl && supportsNativeShare) {
+                const file = await imageUrlToFile(imageUrl, 'hairdirector-result.png');
+
+                if (file && navigator.canShare?.({ files: [file] })) {
+                    await navigator.share({
+                        title: title,
+                        text: text,
+                        files: [file]
+                    });
+                    console.log('✅ 네이티브 이미지 공유 성공');
+                    onClose();
+                    return;
+                }
+            }
+
+            // 2. 파일 공유 불가 시 - URL만 공유
+            if (navigator.share) {
+                await navigator.share({ title, text, url });
+                console.log('✅ 네이티브 URL 공유 성공');
+                onClose();
+                return;
+            }
+
+            // 3. 네이티브 공유 불가 시 - 클립보드 복사
+            await navigator.clipboard.writeText(fullText);
+            showToast('클립보드에 복사되었습니다!');
+        } catch (error: any) {
+            // 사용자가 공유 취소한 경우
+            if (error.name === 'AbortError') {
+                console.log('사용자가 공유를 취소했습니다.');
+            } else {
+                console.error('공유 실패:', error);
+                // 폴백: 클립보드 복사
+                await navigator.clipboard.writeText(fullText);
+                showToast('클립보드에 복사되었습니다!');
+            }
+        } finally {
+            setIsSharing(false);
+        }
+    };
+
     const handleShare = async (e: React.MouseEvent, id: string) => {
         e.preventDefault();
         e.stopPropagation();
         console.log('🔄 공유 클릭:', id);
+
         switch (id) {
+            case 'native':
+                await handleNativeShare();
+                break;
             case 'kakao':
                 if (kakaoReady) {
                     console.log('🔄 카카오 공유 시도...');
@@ -92,8 +169,8 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                 break;
             case 'instagram':
             case 'tiktok':
-                await navigator.clipboard.writeText(fullText);
-                showToast('클립보드에 복사됨!');
+                // 인스타/틱톡은 네이티브 공유로 유도
+                await handleNativeShare();
                 break;
             case 'telegram':
                 window.open(`https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`, '_blank');
@@ -104,13 +181,20 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                 showToast('링크가 복사되었습니다!');
                 setTimeout(() => setCopied(false), 2000);
                 break;
-            case 'more':
-                if (navigator.share) {
-                    await navigator.share({ title, text, url });
-                }
-                break;
         }
     };
+
+    // 공유 옵션 목록 (네이티브 공유를 첫 번째로)
+    const SHARE_OPTIONS: ShareOption[] = [
+        { id: 'native', name: '공유하기', icon: 'fas fa-share-from-square', color: '#fff', bgColor: 'linear-gradient(135deg, #7c3aed, #a855f7)' },
+        { id: 'kakao', name: '카카오톡', icon: 'fas fa-comment', color: '#3C1E1E', bgColor: '#FEE500' },
+        { id: 'instagram', name: '인스타그램', icon: 'fab fa-instagram', color: '#fff', bgColor: 'linear-gradient(45deg, #f09433, #dc2743, #bc1888)' },
+        { id: 'facebook', name: '페이스북', icon: 'fab fa-facebook-f', color: '#fff', bgColor: '#1877F2' },
+        { id: 'twitter', name: 'X', icon: 'fab fa-x-twitter', color: '#fff', bgColor: '#000000' },
+        { id: 'telegram', name: '텔레그램', icon: 'fab fa-telegram', color: '#fff', bgColor: '#0088CC' },
+        { id: 'tiktok', name: '틱톡', icon: 'fab fa-tiktok', color: '#fff', bgColor: '#000000' },
+        { id: 'copy', name: '링크 복사', icon: 'fas fa-link', color: '#fff', bgColor: '#6B7280' },
+    ];
 
     const modal = (
         <>
@@ -141,6 +225,15 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                     margin: '0 auto',
                 }}
             >
+                {/* 핸들 바 */}
+                <div style={{
+                    width: '40px',
+                    height: '4px',
+                    backgroundColor: 'rgba(255,255,255,0.2)',
+                    borderRadius: '2px',
+                    margin: '0 auto 16px'
+                }} />
+
                 {/* 헤더 */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                     <h3 style={{ color: '#fff', fontWeight: 'bold', fontSize: '18px', margin: 0 }}>공유하기</h3>
@@ -163,12 +256,31 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                     </button>
                 </div>
 
+                {/* 네이티브 공유 지원 안내 */}
+                {supportsNativeShare && (
+                    <div style={{
+                        padding: '12px',
+                        backgroundColor: 'rgba(124, 58, 237, 0.1)',
+                        borderRadius: '12px',
+                        marginBottom: '16px',
+                        border: '1px solid rgba(124, 58, 237, 0.2)'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <i className="fas fa-image" style={{ color: '#a855f7' }}></i>
+                            <span style={{ color: '#ccc', fontSize: '13px' }}>
+                                이미지와 함께 공유할 수 있어요!
+                            </span>
+                        </div>
+                    </div>
+                )}
+
                 {/* 공유 옵션 */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '16px' }}>
                     {SHARE_OPTIONS.map((opt) => (
                         <button
                             key={opt.id}
                             onClick={(e) => handleShare(e, opt.id)}
+                            disabled={isSharing && opt.id === 'native'}
                             style={{
                                 display: 'flex',
                                 flexDirection: 'column',
@@ -177,7 +289,8 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                                 padding: '12px',
                                 backgroundColor: 'transparent',
                                 border: 'none',
-                                cursor: 'pointer',
+                                cursor: isSharing && opt.id === 'native' ? 'wait' : 'pointer',
+                                opacity: isSharing && opt.id === 'native' ? 0.6 : 1,
                             }}
                         >
                             <div
@@ -190,11 +303,22 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
+                                    boxShadow: opt.id === 'native' ? '0 4px 12px rgba(124, 58, 237, 0.4)' : 'none',
                                 }}
                             >
-                                <i className={opt.icon} style={{ fontSize: '20px' }}></i>
+                                {isSharing && opt.id === 'native' ? (
+                                    <i className="fas fa-spinner fa-spin" style={{ fontSize: '20px' }}></i>
+                                ) : (
+                                    <i className={opt.icon} style={{ fontSize: '20px' }}></i>
+                                )}
                             </div>
-                            <span style={{ color: '#ccc', fontSize: '12px' }}>{opt.name}</span>
+                            <span style={{
+                                color: opt.id === 'native' ? '#a855f7' : '#ccc',
+                                fontSize: '12px',
+                                fontWeight: opt.id === 'native' ? 'bold' : 'normal'
+                            }}>
+                                {opt.name}
+                            </span>
                         </button>
                     ))}
                 </div>

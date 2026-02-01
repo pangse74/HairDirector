@@ -904,7 +904,7 @@ ${stylingTips.slice(0, 3).map(t => `- ${t}`).join('\n')}
         title={shareData.title}
         text={shareData.text}
         url={shareData.url}
-        imageUrl={originalImage}
+        imageUrl={resultImage || originalImage}
       />
     </div>
   );
