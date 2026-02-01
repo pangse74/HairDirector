@@ -22,19 +22,34 @@ interface ShareOption {
 // 이미지 URL(base64 포함)을 File 객체로 변환
 const imageUrlToFile = async (imageUrl: string, fileName: string = 'hairstyle-result.png'): Promise<File | null> => {
     try {
+        console.log('📸 이미지 변환 시작:', imageUrl.substring(0, 50) + '...');
+
         // base64 데이터인 경우
         if (imageUrl.startsWith('data:')) {
             const response = await fetch(imageUrl);
             const blob = await response.blob();
+            console.log('✅ Base64 이미지 변환 성공, 크기:', blob.size);
             return new File([blob], fileName, { type: blob.type || 'image/png' });
         }
 
-        // 일반 URL인 경우
-        const response = await fetch(imageUrl);
+        // 일반 URL인 경우 - 절대 경로로 변환
+        const fullUrl = imageUrl.startsWith('/') ? window.location.origin + imageUrl : imageUrl;
+        console.log('🔗 Fetch URL:', fullUrl);
+
+        const response = await fetch(fullUrl, { mode: 'cors' });
+        if (!response.ok) {
+            console.error('❌ 이미지 fetch 실패:', response.status);
+            return null;
+        }
+
         const blob = await response.blob();
-        return new File([blob], fileName, { type: blob.type || 'image/png' });
+        console.log('✅ URL 이미지 변환 성공, 크기:', blob.size, '타입:', blob.type);
+
+        // blob 타입이 없으면 PNG로 설정
+        const mimeType = blob.type || 'image/png';
+        return new File([blob], fileName, { type: mimeType });
     } catch (error) {
-        console.error('이미지 변환 실패:', error);
+        console.error('❌ 이미지 변환 실패:', error);
         return null;
     }
 };
@@ -94,25 +109,40 @@ export const ShareModal: React.FC<ShareModalProps> = ({
         if (isSharing) return;
         setIsSharing(true);
 
+        console.log('🚀 네이티브 공유 시작');
+        console.log('📌 imageUrl:', imageUrl ? imageUrl.substring(0, 50) + '...' : 'null');
+        console.log('📌 supportsNativeShare:', supportsNativeShare);
+
         try {
             // 1. 이미지가 있고 파일 공유 가능한 경우 - 이미지 직접 공유
             if (imageUrl && supportsNativeShare) {
+                console.log('📸 이미지 파일 변환 시도...');
                 const file = await imageUrlToFile(imageUrl, 'hairdirector-result.png');
 
-                if (file && navigator.canShare?.({ files: [file] })) {
-                    await navigator.share({
-                        title: title,
-                        text: text,
-                        files: [file]
-                    });
-                    console.log('✅ 네이티브 이미지 공유 성공');
-                    onClose();
-                    return;
+                if (file && file.size > 0) {
+                    console.log('📁 파일 생성됨:', file.name, file.size, 'bytes');
+
+                    if (navigator.canShare?.({ files: [file] })) {
+                        console.log('✅ 파일 공유 가능, 공유 시작...');
+                        await navigator.share({
+                            title: title,
+                            text: text,
+                            files: [file]
+                        });
+                        console.log('✅ 네이티브 이미지 공유 성공');
+                        onClose();
+                        return;
+                    } else {
+                        console.log('⚠️ 이 파일은 공유할 수 없음, URL 공유로 폴백');
+                    }
+                } else {
+                    console.log('⚠️ 파일 변환 실패 또는 빈 파일, URL 공유로 폴백');
                 }
             }
 
             // 2. 파일 공유 불가 시 - URL만 공유
             if (navigator.share) {
+                console.log('🔗 URL 공유 시도...');
                 await navigator.share({ title, text, url });
                 console.log('✅ 네이티브 URL 공유 성공');
                 onClose();
@@ -120,17 +150,23 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             }
 
             // 3. 네이티브 공유 불가 시 - 클립보드 복사
+            console.log('📋 클립보드 복사로 폴백');
             await navigator.clipboard.writeText(fullText);
             showToast('클립보드에 복사되었습니다!');
         } catch (error: any) {
             // 사용자가 공유 취소한 경우
             if (error.name === 'AbortError') {
-                console.log('사용자가 공유를 취소했습니다.');
+                console.log('👤 사용자가 공유를 취소했습니다.');
             } else {
-                console.error('공유 실패:', error);
+                console.error('❌ 공유 실패:', error);
                 // 폴백: 클립보드 복사
-                await navigator.clipboard.writeText(fullText);
-                showToast('클립보드에 복사되었습니다!');
+                try {
+                    await navigator.clipboard.writeText(fullText);
+                    showToast('클립보드에 복사되었습니다!');
+                } catch (clipboardError) {
+                    console.error('클립보드 복사도 실패:', clipboardError);
+                    showToast('공유에 실패했습니다.');
+                }
             }
         } finally {
             setIsSharing(false);
