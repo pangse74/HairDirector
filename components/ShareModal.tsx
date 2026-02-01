@@ -19,17 +19,71 @@ interface ShareOption {
     bgColor: string;
 }
 
+// 이미지를 압축하여 Blob으로 변환 (카카오톡 등에서 공유 가능하도록)
+const compressImage = (imageSrc: string, maxWidth: number = 1024, quality: number = 0.8): Promise<Blob | null> => {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+
+            // 최대 너비로 리사이즈
+            if (width > maxWidth) {
+                height = (height * maxWidth) / width;
+                width = maxWidth;
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                resolve(null);
+                return;
+            }
+
+            ctx.drawImage(img, 0, 0, width, height);
+
+            canvas.toBlob(
+                (blob) => {
+                    console.log('✅ 이미지 압축 완료:', blob?.size, 'bytes');
+                    resolve(blob);
+                },
+                'image/jpeg',
+                quality
+            );
+        };
+
+        img.onerror = () => {
+            console.error('❌ 이미지 로드 실패');
+            resolve(null);
+        };
+
+        img.src = imageSrc;
+    });
+};
+
 // 이미지 URL(base64 포함)을 File 객체로 변환
-const imageUrlToFile = async (imageUrl: string, fileName: string = 'hairstyle-result.png'): Promise<File | null> => {
+const imageUrlToFile = async (imageUrl: string, fileName: string = 'hairstyle-result.jpg'): Promise<File | null> => {
     try {
         console.log('📸 이미지 변환 시작:', imageUrl.substring(0, 50) + '...');
 
-        // base64 데이터인 경우
+        // base64 데이터인 경우 - 압축 후 변환
         if (imageUrl.startsWith('data:')) {
+            const blob = await compressImage(imageUrl);
+            if (blob) {
+                console.log('✅ Base64 이미지 압축 변환 성공, 크기:', blob.size);
+                return new File([blob], fileName, { type: 'image/jpeg' });
+            }
+
+            // 압축 실패 시 원본 사용
             const response = await fetch(imageUrl);
-            const blob = await response.blob();
-            console.log('✅ Base64 이미지 변환 성공, 크기:', blob.size);
-            return new File([blob], fileName, { type: blob.type || 'image/png' });
+            const originalBlob = await response.blob();
+            console.log('⚠️ 압축 실패, 원본 사용:', originalBlob.size);
+            return new File([originalBlob], fileName, { type: originalBlob.type || 'image/png' });
         }
 
         // 일반 URL인 경우 - 절대 경로로 변환
@@ -45,8 +99,8 @@ const imageUrlToFile = async (imageUrl: string, fileName: string = 'hairstyle-re
         const blob = await response.blob();
         console.log('✅ URL 이미지 변환 성공, 크기:', blob.size, '타입:', blob.type);
 
-        // blob 타입이 없으면 PNG로 설정
-        const mimeType = blob.type || 'image/png';
+        // blob 타입이 없으면 JPEG로 설정
+        const mimeType = blob.type || 'image/jpeg';
         return new File([blob], fileName, { type: mimeType });
     } catch (error) {
         console.error('❌ 이미지 변환 실패:', error);
