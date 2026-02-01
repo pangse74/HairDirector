@@ -382,6 +382,10 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                         <button
                             key={opt.id}
                             onClick={(e) => handleShare(e, opt.id)}
+                            onTouchEnd={(e) => {
+                                e.preventDefault();
+                                handleShare(e as any, opt.id);
+                            }}
                             disabled={isSharing && opt.id === 'native'}
                             style={{
                                 display: 'flex',
@@ -393,6 +397,8 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                                 border: 'none',
                                 cursor: isSharing && opt.id === 'native' ? 'wait' : 'pointer',
                                 opacity: isSharing && opt.id === 'native' ? 0.6 : 1,
+                                WebkitTapHighlightColor: 'transparent',
+                                touchAction: 'manipulation',
                             }}
                         >
                             <div
