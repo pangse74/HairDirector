@@ -239,6 +239,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     const handleShare = async (e: React.MouseEvent, id: string) => {
         e.preventDefault();
         e.stopPropagation();
+
+        // 디버그용 alert
+        alert(`버튼 클릭: ${id}`);
         console.log('🔄 공유 클릭:', id);
 
         switch (id) {
